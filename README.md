@@ -51,7 +51,7 @@ Connect to your existing OPC-UA data pipeline, calculate OEE in real time, and g
 ### 2. Clone and configure
 
 ```bash
-git clone https://github.com/your-org/OEEForge.git
+git clone https://github.com/jkp-parker/OEEForge.git
 cd OEEForge
 cp .env.example .env
 ```
