@@ -1,0 +1,246 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "annotations": { "list": [] },
+  "description": "OEEForge — Overall Equipment Effectiveness Overview",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 60 },
+              { "color": "green", "value": 85 }
+            ]
+          },
+          "unit": "percent",
+          "max": 100,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "showThresholdLabels": false, "showThresholdMarkers": true },
+      "title": "OEE Score",
+      "type": "gauge",
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT NOW() as time, 0 as oee",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 70 }, { "color": "green", "value": 90 }] },
+          "unit": "percent", "max": 100, "min": 0
+        }, "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "options": { "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+      "title": "Availability",
+      "type": "gauge",
+      "targets": [{ "datasource": { "type": "postgres", "uid": "postgresql" }, "rawSql": "SELECT NOW() as time, 0 as availability", "format": "time_series", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 70 }, { "color": "green", "value": 95 }] },
+          "unit": "percent", "max": 100, "min": 0
+        }, "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "options": { "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+      "title": "Performance",
+      "type": "gauge",
+      "targets": [{ "datasource": { "type": "postgres", "uid": "postgresql" }, "rawSql": "SELECT NOW() as time, 0 as performance", "format": "time_series", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 95 }, { "color": "green", "value": 99 }] },
+          "unit": "percent", "max": 100, "min": 0
+        }, "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "options": { "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
+      "title": "Quality",
+      "type": "gauge",
+      "targets": [{ "datasource": { "type": "postgres", "uid": "postgresql" }, "rawSql": "SELECT NOW() as time, 0 as quality", "format": "time_series", "refId": "A" }]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "spanNulls": false }, "unit": "percent" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 6 },
+      "id": 5,
+      "options": { "legend": { "calcs": ["lastNotNull", "max", "min"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "none" } },
+      "title": "OEE Components Over Time — All Machines",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT NOW() as time, 0 as oee, 0 as availability, 0 as performance, 0 as quality",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "fieldConfig": { "defaults": { "custom": { "displayMode": "auto" } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "id": 6,
+      "options": { "footer": { "show": false }, "showHeader": true },
+      "title": "Machines — OEE Summary",
+      "type": "table",
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT m.name AS machine, m.id AS machine_id FROM machines m JOIN lines l ON m.line_id = l.id ORDER BY m.name",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "id": 7,
+      "options": { "footer": { "show": false }, "showHeader": true },
+      "title": "Recent Downtime Events",
+      "type": "table",
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT de.start_time, m.name AS machine, dc.name AS reason, EXTRACT(EPOCH FROM (COALESCE(de.end_time, NOW()) - de.start_time)) AS duration_seconds FROM downtime_events de JOIN machines m ON de.machine_id = m.id LEFT JOIN downtime_codes dc ON de.reason_code_id = dc.id WHERE de.start_time > NOW() - INTERVAL '8 hours' ORDER BY de.start_time DESC LIMIT 50",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2 }, "unit": "percent" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 },
+      "id": 8,
+      "title": "Availability Breakdown — State Time by Machine",
+      "type": "barchart",
+      "options": {
+        "barWidth": 0.7,
+        "groupWidth": 0.7,
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT m.name AS machine, COUNT(*) AS downtime_events FROM downtime_events de JOIN machines m ON de.machine_id = m.id WHERE de.start_time > NOW() - INTERVAL '24 hours' GROUP BY m.name ORDER BY downtime_events DESC",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 30 },
+      "id": 9,
+      "title": "Downtime by Reason Code (Last 24h)",
+      "type": "piechart",
+      "options": { "legend": { "displayMode": "table", "placement": "right" }, "pieType": "donut" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT dc.name AS reason, COALESCE(SUM(EXTRACT(EPOCH FROM (COALESCE(de.end_time, NOW()) - de.start_time))), 0) / 60 AS minutes FROM downtime_events de LEFT JOIN downtime_codes dc ON de.reason_code_id = dc.id WHERE de.start_time > NOW() - INTERVAL '24 hours' GROUP BY dc.name ORDER BY minutes DESC LIMIT 10",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 30 },
+      "id": 10,
+      "title": "Reject Events by Reason Code (Last 24h)",
+      "type": "piechart",
+      "options": { "legend": { "displayMode": "table", "placement": "right" }, "pieType": "donut" },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "postgresql" },
+          "rawSql": "SELECT COALESCE(dc.name, 'Unknown') AS reason, SUM(re.reject_count) AS total_rejects FROM reject_events re LEFT JOIN downtime_codes dc ON re.reason_code_id = dc.id WHERE re.timestamp > NOW() - INTERVAL '24 hours' GROUP BY dc.name ORDER BY total_rejects DESC LIMIT 10",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 38,
+  "tags": ["oee", "manufacturing"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": { "type": "postgres", "uid": "postgresql" },
+        "definition": "SELECT name FROM machines ORDER BY name",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "machine",
+        "options": [],
+        "query": "SELECT name FROM machines ORDER BY name",
+        "refresh": 2,
+        "sort": 1,
+        "label": "Machine",
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": { "type": "postgres", "uid": "postgresql" },
+        "definition": "SELECT name FROM shift_schedules WHERE is_active = true ORDER BY name",
+        "hide": 0,
+        "includeAll": true,
+        "multi": false,
+        "name": "shift",
+        "options": [],
+        "query": "SELECT name FROM shift_schedules WHERE is_active = true ORDER BY name",
+        "refresh": 2,
+        "sort": 1,
+        "label": "Shift",
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-8h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "OEEForge — OEE Overview",
+  "uid": "oeeforge-overview",
+  "version": 1
+}

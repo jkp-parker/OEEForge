@@ -1,0 +1,44 @@
+apiVersion: 1
+
+datasources:
+  # ── InfluxDB 3 Core ──────────────────────────────────────────────────────────
+  - name: InfluxDB3
+    type: influxdb
+    access: proxy
+    url: ${INFLUXDB_URL}
+    jsonData:
+      version: Flux
+      organization: oeeforge
+      defaultBucket: ${INFLUXDB_DATABASE}
+    secureJsonData:
+      token: ${INFLUXDB_TOKEN}
+    editable: true
+    uid: influxdb3
+
+  # ── InfluxDB 3 HTTP (SQL via custom JSON API) ─────────────────────────────
+  - name: InfluxDB3-SQL
+    type: yesoreyeram-infinity-datasource
+    access: proxy
+    editable: true
+    uid: influxdb3sql
+    jsonData:
+      base_url: ${INFLUXDB_URL}
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────────
+  - name: PostgreSQL
+    type: postgres
+    access: proxy
+    url: ${POSTGRES_HOST}:${POSTGRES_PORT}
+    database: ${POSTGRES_DB}
+    user: ${POSTGRES_USER}
+    secureJsonData:
+      password: ${POSTGRES_PASSWORD}
+    jsonData:
+      sslmode: disable
+      maxOpenConns: 5
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+      postgresVersion: 1600
+      timescaledb: false
+    editable: true
+    uid: postgresql

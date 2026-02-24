@@ -1,0 +1,165 @@
+version: "3.9"
+
+services:
+  # ── InfluxDB 3 Core ─────────────────────────────────────────────────────────
+  influxdb:
+    image: quay.io/influxdb/influxdb3-core:latest
+    container_name: oeeforge_influxdb
+    restart: unless-stopped
+    ports:
+      - "${INFLUXDB_PORT:-8181}:8181"
+    volumes:
+      - influxdb_data:/var/lib/influxdb3
+    environment:
+      INFLUXDB3_NODE_IDENTIFIER_PREFIX: oeeforge
+    command:
+      - serve
+      - --object-store=file
+      - --data-dir=/var/lib/influxdb3
+      - --http-bind=0.0.0.0:8181
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8181/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - oeeforge_net
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: oeeforge_postgres
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-oeeforge}
+      POSTGRES_USER: ${POSTGRES_USER:-oeeforge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-oeeforge_secret}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-oeeforge} -d ${POSTGRES_DB:-oeeforge}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - oeeforge_net
+
+  # ── FastAPI Backend ──────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: oeeforge_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-oeeforge}:${POSTGRES_PASSWORD:-oeeforge_secret}@postgres:5432/${POSTGRES_DB:-oeeforge}
+      INFLUXDB_URL: http://influxdb:8181
+      INFLUXDB_DATABASE: ${INFLUXDB_DATABASE:-oeeforge}
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-}
+      SECRET_KEY: ${SECRET_KEY:-changeme_in_production_32chars!!}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-480}
+      FIRST_ADMIN_EMAIL: ${FIRST_ADMIN_EMAIL:-admin@oeeforge.local}
+      FIRST_ADMIN_PASSWORD: ${FIRST_ADMIN_PASSWORD:-admin}
+    networks:
+      - oeeforge_net
+
+  # ── OEE Calculation Service ──────────────────────────────────────────────────
+  oee-service:
+    build:
+      context: ./oee-service
+      dockerfile: Dockerfile
+    container_name: oeeforge_oee_service
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    volumes:
+      - ./oee-service:/app
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-oeeforge}:${POSTGRES_PASSWORD:-oeeforge_secret}@postgres:5432/${POSTGRES_DB:-oeeforge}
+      INFLUXDB_URL: http://influxdb:8181
+      INFLUXDB_DATABASE: ${INFLUXDB_DATABASE:-oeeforge}
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-}
+      OEE_CALC_INTERVAL_SECONDS: ${OEE_CALC_INTERVAL_SECONDS:-300}
+    networks:
+      - oeeforge_net
+
+  # ── React Frontend ───────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: oeeforge_frontend
+    restart: unless-stopped
+    networks:
+      - oeeforge_net
+
+  # ── Grafana ──────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: oeeforge_grafana
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: ""
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      # PostgreSQL for Grafana datasource
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-oeeforge}
+      POSTGRES_USER: ${POSTGRES_USER:-oeeforge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-oeeforge_secret}
+      INFLUXDB_URL: http://influxdb:8181
+      INFLUXDB_DATABASE: ${INFLUXDB_DATABASE:-oeeforge}
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    networks:
+      - oeeforge_net
+
+  # ── Nginx Reverse Proxy ──────────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: oeeforge_nginx
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-80}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - oeeforge_net
+
+networks:
+  oeeforge_net:
+    driver: bridge
+
+volumes:
+  influxdb_data:
+  postgres_data:
+  grafana_data:
