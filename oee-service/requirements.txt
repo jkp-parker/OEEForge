@@ -1,0 +1,6 @@
+sqlalchemy[asyncio]==2.0.30
+asyncpg==0.29.0
+influxdb3-python==0.7.0
+pyarrow==16.1.0
+apscheduler==3.10.4
+pydantic-settings==2.2.1
