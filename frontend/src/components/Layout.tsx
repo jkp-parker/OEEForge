@@ -21,6 +21,13 @@ const adminNav = [
   { label: "Quality", href: "/admin/quality-config", icon: Eye },
 ];
 
+// Operator pages accessible to admins under /admin/operator/*
+const adminOperatorNav = [
+  { label: "Shift Overview", href: "/admin/operator", icon: BarChart3 },
+  { label: "Log Downtime", href: "/admin/operator/downtime", icon: AlertTriangle },
+  { label: "Log Rejects", href: "/admin/operator/rejects", icon: Package },
+];
+
 const operatorNav = [
   { label: "Dashboard", href: "/operator", icon: BarChart3 },
   { label: "Log Downtime", href: "/operator/downtime", icon: AlertTriangle },
@@ -54,25 +61,58 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         </div>
 
-        <nav className="flex-1 py-4 space-y-0.5 px-2 overflow-y-auto">
-          {nav.map(({ label, href, icon: Icon }) => {
-            const active = location.pathname === href;
-            return (
-              <Link
-                key={href}
-                to={href}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-                  active
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-300 hover:bg-gray-800 hover:text-white"
-                )}
-              >
-                <Icon size={16} className="shrink-0" />
-                {label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 py-4 px-2 overflow-y-auto">
+          {/* Primary nav (role-based) */}
+          <div className="space-y-0.5">
+            {nav.map(({ label, href, icon: Icon }) => {
+              const active = location.pathname === href;
+              return (
+                <Link
+                  key={href}
+                  to={href}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                    active
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                  )}
+                >
+                  <Icon size={16} className="shrink-0" />
+                  {label}
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Operator view section — admins only */}
+          {isAdmin && (
+            <>
+              <div className="border-t border-gray-700 my-3" />
+              <div className="px-3 pb-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Operator View
+              </div>
+              <div className="space-y-0.5">
+                {adminOperatorNav.map(({ label, href, icon: Icon }) => {
+                  const active = location.pathname === href;
+                  return (
+                    <Link
+                      key={href}
+                      to={href}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                        active
+                          ? "bg-blue-600 text-white"
+                          : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                      )}
+                    >
+                      <Icon size={16} className="shrink-0" />
+                      {label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </nav>
 
         <div className="px-4 py-3 border-t border-gray-700">

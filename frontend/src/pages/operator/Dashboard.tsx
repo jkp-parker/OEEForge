@@ -1,124 +1,404 @@
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { machinesApi, oeeMetricsApi, oeeTargetsApi, shiftInstancesApi, type OEEMetric } from "@/lib/api";
-import { OEEGauge } from "@/components/OEEGauge";
-import { pct, oeeColor } from "@/lib/utils";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { machinesApi, oeeMetricsApi, downtimeEventsApi, downtimeCodesApi, type OEEMetric } from "@/lib/api";
+import { OEEDonutChart } from "@/components/charts/OEEDonutChart";
+import { DowntimeStackedChart } from "@/components/charts/DowntimeStackedChart";
+import { RefreshCw } from "lucide-react";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function toLocalDT(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  );
+}
+
+const PRESETS = [
+  { label: "Last 24 Hrs",  hours: 24 },
+  { label: "Last 7 Days",  hours: 24 * 7 },
+  { label: "Last 30 Days", hours: 24 * 30 },
+] as const;
+
+// Default: last 24 hours
+const now = new Date();
+const DEFAULT_FROM   = toLocalDT(new Date(now.getTime() - 24 * 60 * 60 * 1000));
+const DEFAULT_TO     = toLocalDT(now);
+const DEFAULT_PRESET = "Last 24 Hrs";
+
+const avg = (arr: number[]) =>
+  arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+
+// ── KPI Card ──────────────────────────────────────────────────────────────────
+
+function KpiCard({
+  label,
+  value,
+  isPercent = true,
+  sub,
+}: {
+  label: string;
+  value: number | null;
+  isPercent?: boolean;
+  sub?: string;
+}) {
+  const text =
+    value == null ? "—" : isPercent ? `${value.toFixed(1)}%` : value.toLocaleString();
+  const color =
+    value == null || !isPercent
+      ? "text-gray-800"
+      : value >= 85
+      ? "text-emerald-600"
+      : value >= 60
+      ? "text-amber-500"
+      : "text-red-500";
+
+  return (
+    <div className="card px-5 py-4">
+      <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+        {label}
+      </div>
+      <div className={`text-3xl font-bold leading-none ${color}`}>{text}</div>
+      {sub && <div className="text-xs text-gray-400 mt-1">{sub}</div>}
+    </div>
+  );
+}
+
+// ── Operator Dashboard ────────────────────────────────────────────────────────
 
 export default function OperatorDashboard() {
   const { user } = useAuth();
+  const [fromDate,     setFromDate]     = useState(DEFAULT_FROM);
+  const [toDate,       setToDate]       = useState(DEFAULT_TO);
+  const [activePreset, setActivePreset] = useState<string>(DEFAULT_PRESET);
+  const [selectedMachine, setSelectedMachine] = useState("");
 
+  function applyPreset(hours: number, label: string) {
+    const to   = new Date();
+    const from = new Date(to.getTime() - hours * 60 * 60 * 1000);
+    setToDate(toLocalDT(to));
+    setFromDate(toLocalDT(from));
+    setActivePreset(label);
+  }
+
+  // ── Queries ───────────────────────────────────────────────────────────────────
+
+  // Scope machines to operator's line (null line_id = show all, e.g. for admins viewing this page)
   const { data: machines = [] } = useQuery({
     queryKey: ["machines", user?.line_id],
     queryFn: () => machinesApi.list(user?.line_id ?? undefined).then((r) => r.data),
     enabled: !!user,
   });
 
-  const { data: targets = [] } = useQuery({
-    queryKey: ["oee-targets"],
-    queryFn: () => oeeTargetsApi.list().then((r) => r.data),
-  });
+  const queryParams = {
+    from_time: new Date(fromDate).toISOString(),
+    to_time:   new Date(toDate).toISOString(),
+    machine_id: selectedMachine || undefined,
+    limit: 5000,
+  };
 
-  const machineIds = machines.map((m) => String(m.id));
-
-  const { data: oeeHistory = [] } = useQuery({
-    queryKey: ["oee-metrics", "oee", machineIds],
-    queryFn: () => oeeMetricsApi.oee({ limit: 100 }).then((r) => r.data),
-    enabled: machineIds.length > 0,
+  const {
+    data: oeeData = [],
+    isFetching,
+    dataUpdatedAt,
+    refetch,
+  } = useQuery({
+    queryKey: ["oee-metrics", "oee", "operator", fromDate, toDate, selectedMachine],
+    queryFn: () => oeeMetricsApi.oee(queryParams).then((r) => r.data),
     refetchInterval: 60_000,
-  });
-
-  const latestByMachine: Record<string, OEEMetric> = {};
-  for (const row of oeeHistory) {
-    if (row.machine_id && !latestByMachine[row.machine_id]) {
-      latestByMachine[row.machine_id] = row;
-    }
-  }
-
-  const chartData = oeeHistory
-    .filter((r) => machines.length === 0 || machineIds.includes(r.machine_id ?? ""))
-    .slice(0, 50)
-    .reverse()
-    .map((r) => ({
-      time: r.time ? new Date(r.time).toLocaleTimeString() : "",
-      OEE: r.oee != null ? +(r.oee * 100).toFixed(1) : null,
-      Availability: r.availability != null ? +(r.availability * 100).toFixed(1) : null,
-      Performance: r.performance != null ? +(r.performance * 100).toFixed(1) : null,
-      Quality: r.quality != null ? +(r.quality * 100).toFixed(1) : null,
-    }));
-
-  const { data: currentShift } = useQuery({
-    queryKey: ["shift-instances", "current", machines[0]?.id],
-    queryFn: () =>
-      machines[0]
-        ? shiftInstancesApi.list(machines[0].id).then((r) => r.data[0])
-        : Promise.resolve(undefined),
     enabled: machines.length > 0,
   });
 
+  const { data: downtimeEvents = [] } = useQuery({
+    queryKey: ["downtime-events", "operator", fromDate, toDate, selectedMachine],
+    queryFn: () =>
+      downtimeEventsApi
+        .list({
+          from_time:  new Date(fromDate).toISOString(),
+          to_time:    new Date(toDate).toISOString(),
+          machine_id: selectedMachine ? Number(selectedMachine) : undefined,
+        })
+        .then((r) => r.data),
+    refetchInterval: 60_000,
+  });
+
+  const { data: downtimeCodes = [] } = useQuery({
+    queryKey: ["downtime-codes"],
+    queryFn: () => downtimeCodesApi.list().then((r) => r.data),
+  });
+
+  // ── Derived data ──────────────────────────────────────────────────────────────
+  // Average all snapshots in the selected period per machine so KPIs reflect
+  // the full period, not just the latest snapshot.
+
+  const latestByMachine = useMemo(() => {
+    const groups: Record<string, OEEMetric[]> = {};
+    for (const row of oeeData) {
+      const mid = String(row.machine_id ?? "");
+      if (!mid) continue;
+      if (!groups[mid]) groups[mid] = [];
+      groups[mid].push(row);
+    }
+    const numAvg = (vals: (number | null | undefined)[]) => {
+      const clean = vals.filter((v): v is number => v != null);
+      return clean.length ? clean.reduce((a, b) => a + b, 0) / clean.length : undefined;
+    };
+    return Object.values(groups).map((rows) => ({
+      ...rows[0],
+      oee:          numAvg(rows.map((r) => r.oee)),
+      availability: numAvg(rows.map((r) => r.availability)),
+      performance:  numAvg(rows.map((r) => r.performance)),
+      quality:      numAvg(rows.map((r) => r.quality)),
+      total_parts:  rows.reduce((s, r) => s + (r.total_parts ?? 0), 0),
+      good_parts:   rows.reduce((s, r) => s + (r.good_parts  ?? 0), 0),
+    } as OEEMetric));
+  }, [oeeData]);
+
+  const kpi = useMemo(() => {
+    if (!latestByMachine.length) return null;
+    return {
+      oee:          avg(latestByMachine.map((r) => (r.oee          ?? 0) * 100)),
+      availability: avg(latestByMachine.map((r) => (r.availability ?? 0) * 100)),
+      performance:  avg(latestByMachine.map((r) => (r.performance  ?? 0) * 100)),
+      quality:      avg(latestByMachine.map((r) => (r.quality       ?? 0) * 100)),
+      totalParts:   latestByMachine.reduce((s, r) => s + (r.total_parts ?? 0), 0),
+      goodParts:    latestByMachine.reduce((s, r) => s + (r.good_parts  ?? 0), 0),
+      rejects:      latestByMachine.reduce(
+        (s, r) => s + Math.max(0, (r.total_parts ?? 0) - (r.good_parts ?? 0)),
+        0
+      ),
+    };
+  }, [latestByMachine]);
+
+  const lastUpdated = dataUpdatedAt
+    ? new Date(dataUpdatedAt).toLocaleTimeString()
+    : null;
+
+  // ── Render ────────────────────────────────────────────────────────────────────
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Shift OEE Summary</h1>
-        {currentShift && (
-          <span className={currentShift.is_confirmed ? "badge-green" : "badge-yellow"}>
-            {currentShift.is_confirmed ? "Shift Confirmed" : "Shift Active"}
+    <div className="space-y-5">
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Shift OEE Summary</h1>
+          {lastUpdated && (
+            <p className="text-xs text-gray-400 mt-0.5">
+              Updated {lastUpdated} · auto-refreshes every 60s
+            </p>
+          )}
+        </div>
+        <button
+          className="btn-ghost p-2"
+          onClick={() => refetch()}
+          title="Refresh now"
+        >
+          <RefreshCw
+            className={`h-4 w-4 text-gray-500 ${isFetching ? "animate-spin" : ""}`}
+          />
+        </button>
+      </div>
+
+      {/* ── Filter bar ── */}
+      <div className="card px-4 py-3 flex items-center gap-4 flex-wrap">
+
+        {/* Preset quick-select */}
+        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 flex-shrink-0">
+          {PRESETS.map(({ label, hours }) => (
+            <button
+              key={label}
+              onClick={() => applyPreset(hours, label)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+                activePreset === label
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="w-px h-6 bg-gray-200 flex-shrink-0" />
+
+        {/* From */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">
+            From
           </span>
-        )}
+          <input
+            type="datetime-local"
+            value={fromDate}
+            onChange={(e) => { setFromDate(e.target.value); setActivePreset(""); }}
+            style={{ width: "13rem" }}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+
+        {/* To */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">
+            To
+          </span>
+          <input
+            type="datetime-local"
+            value={toDate}
+            onChange={(e) => { setToDate(e.target.value); setActivePreset(""); }}
+            style={{ width: "13rem" }}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+
+        {/* Machine */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">
+            Machine
+          </span>
+          <select
+            style={{ width: "11rem" }}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            value={selectedMachine}
+            onChange={(e) => setSelectedMachine(e.target.value)}
+          >
+            <option value="">All machines</option>
+            {machines.map((m) => (
+              <option key={m.id} value={String(m.id)}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {/* Machine gauges */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {machines.map((machine) => {
-          const metric = latestByMachine[String(machine.id)];
-          const target = targets.find((t) => t.machine_id === machine.id);
-          return (
-            <div key={machine.id} className="card">
-              <div className="px-6 pt-6 pb-4">
-                <h3 className="text-base font-semibold text-gray-900">{machine.name}</h3>
-              </div>
-              <div className="px-6 pb-6">
-                <div className="grid grid-cols-4 gap-4">
-                  <OEEGauge label="OEE" value={metric?.oee} target={target?.oee_target} size="md" />
-                  <OEEGauge label="Availability" value={metric?.availability} target={target?.availability_target} size="md" />
-                  <OEEGauge label="Performance" value={metric?.performance} target={target?.performance_target} size="md" />
-                  <OEEGauge label="Quality" value={metric?.quality} target={target?.quality_target} size="md" />
-                </div>
-                {metric && (
-                  <div className="mt-4 grid grid-cols-3 gap-2 text-xs text-gray-500">
-                    <div>Parts: <strong>{metric.total_parts ?? "—"}</strong></div>
-                    <div>Good: <strong>{metric.good_parts ?? "—"}</strong></div>
-                    <div>Reject: <strong>{metric.reject_parts ?? "—"}</strong></div>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+      {/* ── KPI Row ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <KpiCard label="Line OEE"     value={kpi?.oee          ?? null} />
+        <KpiCard label="Availability"  value={kpi?.availability ?? null} />
+        <KpiCard label="Performance"   value={kpi?.performance  ?? null} />
+        <KpiCard label="Quality"       value={kpi?.quality       ?? null} />
+        <KpiCard
+          label="Good Parts"
+          value={kpi?.goodParts ?? null}
+          isPercent={false}
+          sub={kpi ? `of ${kpi.totalParts.toLocaleString()} total` : undefined}
+        />
+        <KpiCard
+          label="Rejects"
+          value={kpi?.rejects ?? null}
+          isPercent={false}
+          sub="in selected period"
+        />
       </div>
 
-      {/* Trend chart */}
-      {chartData.length > 1 && (
-        <div className="card">
-          <div className="px-6 pt-6 pb-4">
-            <h3 className="text-base font-semibold text-gray-900">OEE Trend (Current Shift)</h3>
+      {/* ── OEE Breakdown (¼) + Machine Summary (¾) ── */}
+      <div className="grid grid-cols-4 gap-4 items-start">
+
+        <div className="card col-span-1">
+          <div className="px-5 pt-5 pb-2">
+            <h3 className="text-base font-semibold text-gray-900">OEE Breakdown</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Line average</p>
           </div>
-          <div className="px-6 pb-6">
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                <YAxis domain={[0, 100]} unit="%" />
-                <Tooltip formatter={(v) => `${v}%`} />
-                <Line type="monotone" dataKey="OEE" stroke="#6366f1" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="Availability" stroke="#3b82f6" strokeWidth={1} dot={false} />
-                <Line type="monotone" dataKey="Performance" stroke="#10b981" strokeWidth={1} dot={false} />
-                <Line type="monotone" dataKey="Quality" stroke="#f59e0b" strokeWidth={1} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+          <div className="px-4 pb-5 flex items-center justify-center min-h-[260px]">
+            {kpi ? (
+              <OEEDonutChart
+                availability={kpi.availability}
+                performance={kpi.performance}
+                quality={kpi.quality}
+                oee={kpi.oee}
+                size={220}
+              />
+            ) : (
+              <div className="text-sm text-gray-400 text-center px-2">
+                {isFetching ? "Loading…" : "No data for selected period."}
+              </div>
+            )}
           </div>
         </div>
-      )}
+
+        <div className="card col-span-3">
+          <div className="px-6 pt-5 pb-3">
+            <h3 className="text-base font-semibold text-gray-900">Machine Summary</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Latest OEE snapshot per machine in selected period
+            </p>
+          </div>
+          {latestByMachine.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="table-th text-left pl-6 py-2">Machine</th>
+                    <th className="table-th text-right py-2">OEE</th>
+                    <th className="table-th text-right py-2">Availability</th>
+                    <th className="table-th text-right py-2">Performance</th>
+                    <th className="table-th text-right py-2 pr-6">Quality</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {latestByMachine.map((row) => {
+                    const machine = machines.find(
+                      (m) => String(m.id) === String(row.machine_id)
+                    );
+                    const pct = (v?: number) =>
+                      v != null ? `${(v * 100).toFixed(1)}%` : "—";
+                    const oeeVal = (row.oee ?? 0) * 100;
+                    const oeeColor =
+                      oeeVal >= 85
+                        ? "text-emerald-600"
+                        : oeeVal >= 60
+                        ? "text-amber-500"
+                        : "text-red-500";
+                    return (
+                      <tr key={String(row.machine_id)} className="hover:bg-gray-50">
+                        <td className="table-td pl-6 py-2 font-medium text-gray-900">
+                          {machine?.name ?? `Machine ${row.machine_id}`}
+                        </td>
+                        <td className={`table-td text-right py-2 font-semibold ${oeeColor}`}>
+                          {pct(row.oee)}
+                        </td>
+                        <td className="table-td text-right py-2 text-gray-600">
+                          {pct(row.availability)}
+                        </td>
+                        <td className="table-td text-right py-2 text-gray-600">
+                          {pct(row.performance)}
+                        </td>
+                        <td className="table-td text-right py-2 pr-6 text-gray-600">
+                          {pct(row.quality)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="px-6 py-8 text-sm text-gray-400 text-center">
+              No machine data for the selected period.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Downtime by Code (stacked bar) ── */}
+      <div className="card">
+        <div className="px-6 pt-5 pb-3">
+          <h3 className="text-base font-semibold text-gray-900">Downtime by Code</h3>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Cumulative elapsed time per downtime code · selected period · stacked by top 5 machines
+          </p>
+        </div>
+        <div className="px-6 pb-5">
+          <DowntimeStackedChart
+            events={downtimeEvents}
+            codes={downtimeCodes}
+            machines={machines}
+            height={300}
+          />
+        </div>
+      </div>
     </div>
   );
 }

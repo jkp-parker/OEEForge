@@ -55,6 +55,10 @@ export default function App() {
                   <Route path="performance-config" element={<AdminPerformanceConfig />} />
                   <Route path="quality-config" element={<AdminQualityConfig />} />
                   <Route path="tag-configs" element={<AdminTagConfigs />} />
+                  {/* Operator pages accessible to admins */}
+                  <Route path="operator" element={<OperatorDashboard />} />
+                  <Route path="operator/downtime" element={<OperatorDowntime />} />
+                  <Route path="operator/rejects" element={<OperatorRejects />} />
                 </Routes>
               </Layout>
             </PrivateRoute>

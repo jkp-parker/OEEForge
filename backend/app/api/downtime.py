@@ -224,6 +224,8 @@ async def delete_tag_config(config_id: int, db: AsyncSession = Depends(get_db), 
 async def list_events(
     machine_id: int | None = None,
     shift_instance_id: int | None = None,
+    from_time: datetime | None = None,
+    to_time: datetime | None = None,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -232,6 +234,10 @@ async def list_events(
         q = q.where(DowntimeEvent.machine_id == machine_id)
     if shift_instance_id:
         q = q.where(DowntimeEvent.shift_instance_id == shift_instance_id)
+    if from_time:
+        q = q.where(DowntimeEvent.start_time >= from_time)
+    if to_time:
+        q = q.where(DowntimeEvent.start_time <= to_time)
     return (await db.execute(q)).scalars().all()
 
 

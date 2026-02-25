@@ -136,7 +136,7 @@ export const downtimeTagConfigsApi = {
 };
 
 export const downtimeEventsApi = {
-  list: (params?: { machine_id?: number; shift_instance_id?: number }) =>
+  list: (params?: { machine_id?: number; shift_instance_id?: number; from_time?: string; to_time?: string }) =>
     api.get<DowntimeEvent[]>("/downtime-events", { params }),
   create: (data: DowntimeEventCreate) => api.post<DowntimeEvent>("/downtime-events", data),
   update: (id: number, data: Partial<DowntimeEvent>) => api.patch<DowntimeEvent>(`/downtime-events/${id}`, data),

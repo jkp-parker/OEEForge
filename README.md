@@ -42,65 +42,6 @@ Connect to your existing OPC-UA data pipeline, calculate OEE in real time, and g
 
 ---
 
-## Sample Data
-
-OEEForge ships with a seeder script that loads **one week of realistic widget-manufacturing data** so you can explore every screen immediately after starting the stack — no OPC-UA connection required.
-
-### What the seeder creates
-
-**Company:** WidgetCo Manufacturing — Plant 1
-
-| Layer | Entries |
-|---|---|
-| Site → Area → Lines | 1 site · 1 area · **3 production lines** |
-| Machines | **10 machines** spread across the 3 lines |
-| Shift schedules | Day Shift (06:00–18:00) · Night Shift (18:00–06:00) · 7 days/week |
-| Shift instances | 14 shifts per machine · 140 in total |
-| Products | Standard Widget (WDG-STD) · Premium Widget (WDG-PRE) · Widget Housing (WDG-HSG) |
-| Downtime taxonomy | 5 primary categories · 10 secondary categories · 24 reason codes |
-| Downtime events | Varied per machine profile — 2–8 events per shift with realistic durations |
-| OEE targets | Set at 90 / 95 / 99 / 85 % (A/P/Q/OEE) per machine |
-| InfluxDB metrics | `oee_metrics`, `availability_metrics`, `performance_metrics`, `quality_metrics` — one point every 30 min per machine for 7 days |
-
-**Production lines and machines:**
-
-| Line | Machines | Character |
-|---|---|---|
-| Assembly Alpha | A1 · A2 · A3 · Welding Station | Mixed — A1 is best performer, A3 is the floor's oldest machine |
-| Fabrication Beta | Press B1 · Press B2 · CNC Router · Quality Inspector | Varied — CNC has long changeovers, Inspector has frequent quality stops |
-| Packaging Gamma | Packager G1 · Packager G2 | G1 is fast and reliable, G2 is breakdown-prone |
-
-Each machine has a distinct OEE fingerprint (availability 69–93 %, performance 78–92 %, quality 94–99 %) and favours different downtime root causes, so the dashboard charts show meaningful variance across the fleet.
-
-### Load the sample data
-
-```bash
-# With the stack running:
-docker compose exec backend python /app/scripts/seed_sample_data.py
-```
-
-Open the admin portal at **http://localhost**, select the **7d** time range on the dashboard, and all charts will populate.
-
-To wipe the sample data and re-seed with a fresh random week:
-
-```bash
-docker compose exec backend python /app/scripts/seed_sample_data.py --clear
-```
-
-### Removing sample data for production use
-
-The seeder creates all data under a single top-level site called **"WidgetCo - Plant 1"**. Deleting that site cascades through the entire hierarchy.  Run the clear flag once before configuring your real plant:
-
-```bash
-docker compose exec backend python /app/scripts/seed_sample_data.py --clear
-```
-
-Then configure your own organisation, machines, shift schedules, products, and downtime codes through the **Admin Portal** (`/admin`).  InfluxDB metrics written by the seeder are also removed on a best-effort basis (requires your InfluxDB 3 build to support SQL `DELETE`).
-
-> **Tip:** The script is idempotent — if WidgetCo data already exists it will print a notice and exit rather than duplicate records.
-
----
-
 ## Quick Start
 
 ### 1. Prerequisites
@@ -308,6 +249,65 @@ python main.py
 | `TAG_MONITOR_INTERVAL_SECONDS` | `60` | Interval for InfluxDB tag-based downtime monitoring (seconds) |
 | `GRAFANA_USER` | `admin` | Grafana admin username |
 | `GRAFANA_PASSWORD` | `admin` | Grafana admin password |
+
+---
+
+## Sample Data
+
+OEEForge ships with a seeder script that loads **one week of realistic widget-manufacturing data** so you can explore every screen immediately after starting the stack — no OPC-UA connection required.
+
+### What the seeder creates
+
+**Company:** WidgetCo Manufacturing — Plant 1
+
+| Layer | Entries |
+|---|---|
+| Site → Area → Lines | 1 site · 1 area · **3 production lines** |
+| Machines | **10 machines** spread across the 3 lines |
+| Shift schedules | Day Shift (06:00–18:00) · Night Shift (18:00–06:00) · 7 days/week |
+| Shift instances | 14 shifts per machine · 140 in total |
+| Products | Standard Widget (WDG-STD) · Premium Widget (WDG-PRE) · Widget Housing (WDG-HSG) |
+| Downtime taxonomy | 5 primary categories · 10 secondary categories · 24 reason codes |
+| Downtime events | Varied per machine profile — 2–8 events per shift with realistic durations |
+| OEE targets | Set at 90 / 95 / 99 / 85 % (A/P/Q/OEE) per machine |
+| InfluxDB metrics | `oee_metrics`, `availability_metrics`, `performance_metrics`, `quality_metrics` — one point every 30 min per machine for 7 days |
+
+**Production lines and machines:**
+
+| Line | Machines | Character |
+|---|---|---|
+| Assembly Alpha | A1 · A2 · A3 · Welding Station | Mixed — A1 is best performer, A3 is the floor's oldest machine |
+| Fabrication Beta | Press B1 · Press B2 · CNC Router · Quality Inspector | Varied — CNC has long changeovers, Inspector has frequent quality stops |
+| Packaging Gamma | Packager G1 · Packager G2 | G1 is fast and reliable, G2 is breakdown-prone |
+
+Each machine has a distinct OEE fingerprint (availability 69–93 %, performance 78–92 %, quality 94–99 %) and favours different downtime root causes, so the dashboard charts show meaningful variance across the fleet.
+
+### Load the sample data
+
+```bash
+# With the stack running:
+docker compose exec backend python /app/scripts/seed_sample_data.py
+```
+
+Open the admin portal at **http://localhost**, select the **7d** time range on the dashboard, and all charts will populate.
+
+To wipe the sample data and re-seed with a fresh random week:
+
+```bash
+docker compose exec backend python /app/scripts/seed_sample_data.py --clear
+```
+
+### Removing sample data for production use
+
+The seeder creates all data under a single top-level site called **"WidgetCo - Plant 1"**. Deleting that site cascades through the entire hierarchy.  Run the clear flag once before configuring your real plant:
+
+```bash
+docker compose exec backend python /app/scripts/seed_sample_data.py --clear
+```
+
+Then configure your own organisation, machines, shift schedules, products, and downtime codes through the **Admin Portal** (`/admin`).  InfluxDB metrics written by the seeder are also removed on a best-effort basis (requires your InfluxDB 3 build to support SQL `DELETE`).
+
+> **Tip:** The script is idempotent — if WidgetCo data already exists it will print a notice and exit rather than duplicate records.
 
 ---
 

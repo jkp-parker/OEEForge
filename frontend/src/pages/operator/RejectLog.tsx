@@ -87,7 +87,7 @@ export default function OperatorRejects() {
                 <option value="">Select reason</option>
                 {categories.map((cat) => (
                   <optgroup key={cat.id} label={cat.name}>
-                    {codes.filter((c) => c.category_id === cat.id).map((c) => (
+                    {codes.filter((c) => c.secondary_category_id === cat.id).map((c) => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </optgroup>
