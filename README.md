@@ -63,7 +63,7 @@ This seeds 7 days of OEE data for a fictional plant (WidgetCo Manufacturing — 
 | `oee-service` | Python + APScheduler | OEE calculation and tag monitoring |
 | `postgres` | PostgreSQL 16 | Configuration, events, shift data |
 | `influxdb` | InfluxDB 3 Core | Time-series OEE metrics and tag data |
-| `grafana` | Grafana 10.4 | Optional dashboarding |
+| `grafana` | Grafana Main-Ubuntu | Optional dashboarding |
 
 OEE is computed as **Availability × Performance × Quality** on a configurable interval (default 5 min) and written back to InfluxDB for the frontend to query.
 
