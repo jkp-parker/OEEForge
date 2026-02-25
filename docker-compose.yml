@@ -149,7 +149,7 @@ services:
 
   # ── Grafana ──────────────────────────────────────────────────────────────────
   grafana:
-    image: grafana/grafana:10.4.2
+    image: grafana/grafana:main-ubuntu
     container_name: oeeforge_grafana
     restart: unless-stopped
     ports:
