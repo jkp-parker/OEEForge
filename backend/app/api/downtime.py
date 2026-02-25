@@ -315,6 +315,58 @@ async def split_event(
     return second
 
 
+@router.post("/downtime-events/{event_id}/unsplit", response_model=DowntimeEventRead)
+async def unsplit_event(
+    event_id: int,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """Collapse an entire split chain back into a single event.
+
+    Works whether called on the root or any descendant. Finds the root,
+    collects all descendants, restores root.end_time to the max end_time
+    across the whole chain, then deletes every non-root event.
+    """
+    event = await db.get(DowntimeEvent, event_id)
+    if not event:
+        raise HTTPException(404, "Event not found")
+
+    # Walk up to the root
+    root = event
+    while root.parent_event_id is not None:
+        parent = await db.get(DowntimeEvent, root.parent_event_id)
+        if parent is None:
+            raise HTTPException(500, "Split chain is broken — parent not found")
+        root = parent
+
+    # Recursively collect all descendants of root
+    async def collect_descendants(pid: int) -> list[DowntimeEvent]:
+        res = await db.execute(select(DowntimeEvent).where(DowntimeEvent.parent_event_id == pid))
+        children = list(res.scalars().all())
+        result = list(children)
+        for child in children:
+            result.extend(await collect_descendants(child.id))
+        return result
+
+    descendants = await collect_descendants(root.id)
+    if not descendants:
+        raise HTTPException(400, "Event has no split children — nothing to unsplit")
+
+    # Restore root end_time to the latest end_time in the whole chain
+    all_end_times = [e.end_time for e in [root] + descendants if e.end_time is not None]
+    if not all_end_times:
+        raise HTTPException(400, "No end times found in split chain")
+    root.end_time = max(all_end_times)
+
+    # Delete all descendants
+    for d in descendants:
+        await db.delete(d)
+
+    await db.flush()
+    await db.refresh(root)
+    return root
+
+
 @router.delete("/downtime-events/{event_id}", status_code=204)
 async def delete_event(event_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
     obj = await db.get(DowntimeEvent, event_id)

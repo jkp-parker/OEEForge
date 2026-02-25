@@ -22,6 +22,7 @@ import AdminTagConfigs from "@/pages/admin/TagConfigs";
 import OperatorDashboard from "@/pages/operator/Dashboard";
 import OperatorDowntime from "@/pages/operator/DowntimeLog";
 import OperatorRejects from "@/pages/operator/RejectLog";
+import OperatorPerformance from "@/pages/operator/PerformanceLog";
 
 function RootRedirect() {
   const { user, isLoading } = useAuth();
@@ -59,6 +60,7 @@ export default function App() {
                   <Route path="operator" element={<OperatorDashboard />} />
                   <Route path="operator/downtime" element={<OperatorDowntime />} />
                   <Route path="operator/rejects" element={<OperatorRejects />} />
+                  <Route path="operator/performance" element={<OperatorPerformance />} />
                 </Routes>
               </Layout>
             </PrivateRoute>
@@ -75,6 +77,7 @@ export default function App() {
                   <Route index element={<OperatorDashboard />} />
                   <Route path="downtime" element={<OperatorDowntime />} />
                   <Route path="rejects" element={<OperatorRejects />} />
+                  <Route path="performance" element={<OperatorPerformance />} />
                 </Routes>
               </Layout>
             </PrivateRoute>

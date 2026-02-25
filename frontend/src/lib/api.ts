@@ -142,6 +142,8 @@ export const downtimeEventsApi = {
   update: (id: number, data: Partial<DowntimeEvent>) => api.patch<DowntimeEvent>(`/downtime-events/${id}`, data),
   split: (id: number, split_time: string) =>
     api.post<DowntimeEvent>(`/downtime-events/${id}/split`, { split_time }),
+  unsplit: (id: number) =>
+    api.post<DowntimeEvent>(`/downtime-events/${id}/unsplit`, {}),
 };
 
 // ── OEE Config ────────────────────────────────────────────────────────────────
@@ -180,7 +182,7 @@ export const qualityConfigsApi = {
 };
 
 export const rejectEventsApi = {
-  list: (params?: { machine_id?: number; shift_instance_id?: number }) =>
+  list: (params?: { machine_id?: number; shift_instance_id?: number; from_time?: string; to_time?: string }) =>
     api.get<RejectEvent[]>("/reject-events", { params }),
   create: (data: RejectEventCreate) => api.post<RejectEvent>("/reject-events", data),
 };
@@ -295,6 +297,7 @@ export interface OEEMetric {
   availability?: number; performance?: number; quality?: number; oee?: number;
   planned_time_seconds?: number; actual_run_time_seconds?: number;
   total_parts?: number; good_parts?: number; reject_parts?: number;
+  ideal_cycle_time?: number;
   value?: number;
 }
 export interface OEEQueryParams {

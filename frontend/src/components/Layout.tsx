@@ -26,12 +26,14 @@ const adminOperatorNav = [
   { label: "Shift Overview", href: "/admin/operator", icon: BarChart3 },
   { label: "Log Downtime", href: "/admin/operator/downtime", icon: AlertTriangle },
   { label: "Log Rejects", href: "/admin/operator/rejects", icon: Package },
+  { label: "Performance", href: "/admin/operator/performance", icon: Gauge },
 ];
 
 const operatorNav = [
   { label: "Dashboard", href: "/operator", icon: BarChart3 },
   { label: "Log Downtime", href: "/operator/downtime", icon: AlertTriangle },
   { label: "Log Rejects", href: "/operator/rejects", icon: Package },
+  { label: "Performance", href: "/operator/performance", icon: Gauge },
 ];
 
 interface LayoutProps {

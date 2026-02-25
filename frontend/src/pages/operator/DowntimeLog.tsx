@@ -59,8 +59,13 @@ function EditModal({
   secondaries,
   codes,
   isSaving,
+  isSplitting,
+  isUnsplitting,
+  isInSplitChain,
   onClose,
   onSave,
+  onSplit,
+  onUnsplit,
 }: {
   event: DowntimeEvent;
   machines: Machine[];
@@ -68,8 +73,13 @@ function EditModal({
   secondaries: DowntimeSecondaryCategory[];
   codes: DowntimeCode[];
   isSaving: boolean;
+  isSplitting: boolean;
+  isUnsplitting: boolean;
+  isInSplitChain: boolean;
   onClose: () => void;
   onSave: (data: Partial<DowntimeEvent>) => void;
+  onSplit: (splitTime: string) => void;
+  onUnsplit: () => void;
 }) {
   const initCode      = codes.find((c) => c.id === event.reason_code_id);
   const initSecondary = secondaries.find((s) => s.id === initCode?.secondary_category_id);
@@ -80,6 +90,19 @@ function EditModal({
   const [startTime,   setStartTime]   = useState(toLocalDatetimeValue(event.start_time));
   const [endTime,     setEndTime]     = useState(event.end_time ? toLocalDatetimeValue(event.end_time) : "");
   const [comments,    setComments]    = useState(event.comments ?? "");
+  const [showSplit,   setShowSplit]   = useState(false);
+  const [showUnsplit, setShowUnsplit] = useState(false);
+
+  // Split slider state — only meaningful when showSplit is true
+  const startMs     = new Date(event.start_time).getTime();
+  const endMs       = event.end_time ? new Date(event.end_time).getTime() : 0;
+  const durationMin = event.end_time ? Math.round((endMs - startMs) / 60000) : 0;
+  const [sliderMin, setSliderMin] = useState(Math.max(1, Math.floor(durationMin / 2)));
+  const splitTime   = new Date(startMs + sliderMin * 60000);
+
+  // Allow splitting any event with an end time (including already-split events)
+  const canSplit   = !!event.end_time && durationMin > 1;
+  const canUnsplit = isInSplitChain;
 
   const filteredSecondaries = primaryId
     ? secondaries.filter((s) => s.primary_category_id === Number(primaryId))
@@ -203,6 +226,93 @@ function EditModal({
             />
           </div>
         </div>
+
+        {/* Split section */}
+        {canSplit && (
+          <div>
+            <button
+              className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700"
+              onClick={() => setShowSplit((v: boolean) => !v)}
+            >
+              <Scissors className="h-3.5 w-3.5" />
+              {showSplit ? "Hide split" : "Split this event"}
+            </button>
+
+            {showSplit && (
+              <div className="mt-2 px-4 py-3 bg-blue-50 rounded-lg border border-blue-200 space-y-3">
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <span className="whitespace-nowrap">{new Date(event.start_time).toLocaleTimeString()}</span>
+                  <div className="flex-1 h-3 bg-gray-200 rounded-full relative overflow-hidden">
+                    <div
+                      className="absolute left-0 top-0 h-full bg-blue-400 rounded-l-full"
+                      style={{ width: `${(sliderMin / durationMin) * 100}%` }}
+                    />
+                    <div
+                      className="absolute top-0 h-full bg-orange-400 rounded-r-full"
+                      style={{ left: `${(sliderMin / durationMin) * 100}%`, right: 0 }}
+                    />
+                  </div>
+                  <span className="whitespace-nowrap">{new Date(event.end_time!).toLocaleTimeString()}</span>
+                </div>
+
+                <div className="space-y-1">
+                  <input
+                    type="range"
+                    min={1}
+                    max={durationMin - 1}
+                    value={sliderMin}
+                    onChange={(e) => setSliderMin(Number(e.target.value))}
+                    className="w-full accent-blue-600"
+                  />
+                  <div className="text-xs text-center text-gray-600">
+                    Split at: <span className="font-medium">{splitTime.toLocaleString()}</span>
+                    <span className="text-gray-400 ml-2">
+                      (+{sliderMin}m / {durationMin - sliderMin}m remaining)
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  className="btn-primary text-xs px-3 py-1"
+                  disabled={isSplitting}
+                  onClick={() => onSplit(splitTime.toISOString())}
+                >
+                  <Scissors className="h-3 w-3" />
+                  {isSplitting ? "Splitting…" : "Confirm Split"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Unsplit section */}
+        {canUnsplit && (
+          <div>
+            <button
+              className="flex items-center gap-1.5 text-xs font-medium text-orange-600 hover:text-orange-700"
+              onClick={() => setShowUnsplit((v: boolean) => !v)}
+            >
+              <Scissors className="h-3.5 w-3.5" />
+              {showUnsplit ? "Hide unsplit" : "Unsplit entire chain"}
+            </button>
+
+            {showUnsplit && (
+              <div className="mt-2 px-4 py-3 bg-orange-50 rounded-lg border border-orange-200 space-y-2">
+                <p className="text-xs text-orange-800">
+                  This will collapse all splits back into a single event, restoring the original end time.
+                  This cannot be undone.
+                </p>
+                <button
+                  className="text-xs px-3 py-1 rounded-md bg-orange-500 hover:bg-orange-600 text-white font-medium transition-colors disabled:opacity-50"
+                  disabled={isUnsplitting}
+                  onClick={onUnsplit}
+                >
+                  {isUnsplitting ? "Unsplitting…" : "Confirm Unsplit"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex justify-end gap-2 pt-1">
@@ -406,6 +516,14 @@ export default function OperatorDowntime() {
     },
   });
 
+  const unsplitMutation = useMutation({
+    mutationFn: (id: number) => downtimeEventsApi.unsplit(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["downtime-events"] });
+      setEditEventId(null);
+    },
+  });
+
   // ── Derived ───────────────────────────────────────────────────────────────
   const formSecondaries = form.primary_category_id
     ? secondaries.filter((s) => s.primary_category_id === Number(form.primary_category_id))
@@ -415,6 +533,11 @@ export default function OperatorDowntime() {
     : [];
 
   const editEvent = editEventId != null ? events.find((e) => e.id === editEventId) ?? null : null;
+
+  // An event is "in a split chain" if it is itself a split child OR has split children
+  const editEventInChain = editEvent != null && (
+    editEvent.is_split || events.some((e: DowntimeEvent) => e.parent_event_id === editEvent.id)
+  );
 
   const incompleteCount = events.filter(isIncomplete).length;
 
@@ -724,8 +847,13 @@ export default function OperatorDowntime() {
           secondaries={secondaries}
           codes={codes}
           isSaving={updateMutation.isPending}
+          isSplitting={splitMutation.isPending}
+          isUnsplitting={unsplitMutation.isPending}
+          isInSplitChain={editEventInChain}
           onClose={() => setEditEventId(null)}
           onSave={(data) => updateMutation.mutate({ id: editEvent.id, data })}
+          onSplit={(splitTime) => splitMutation.mutate({ id: editEvent.id, splitTime })}
+          onUnsplit={() => unsplitMutation.mutate(editEvent.id)}
         />
       )}
     </div>

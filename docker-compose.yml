@@ -49,7 +49,7 @@ services:
   # ── InfluxDB 3 Explorer ──────────────────────────────────────────────────────
   explorer:
     image: influxdata/influxdb3-ui:1.6.2
-    container_name: oeeforge_explorer
+    container_name: oeeforge_influxdb_explorer
     restart: unless-stopped
     ports:
       - "${EXPLORER_PORT:-8888}:80"

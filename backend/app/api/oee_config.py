@@ -1,5 +1,7 @@
 """CRUD for OEE targets and per-component machine configurations."""
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -177,6 +179,8 @@ async def delete_qual_config(config_id: int, db: AsyncSession = Depends(get_db),
 async def list_reject_events(
     machine_id: int | None = None,
     shift_instance_id: int | None = None,
+    from_time: datetime | None = Query(None),
+    to_time: datetime | None = Query(None),
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_user),
 ):
@@ -185,6 +189,10 @@ async def list_reject_events(
         q = q.where(RejectEvent.machine_id == machine_id)
     if shift_instance_id:
         q = q.where(RejectEvent.shift_instance_id == shift_instance_id)
+    if from_time:
+        q = q.where(RejectEvent.timestamp >= from_time)
+    if to_time:
+        q = q.where(RejectEvent.timestamp <= to_time)
     return (await db.execute(q)).scalars().all()
 
 
