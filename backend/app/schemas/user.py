@@ -5,19 +5,20 @@ from pydantic import BaseModel, EmailStr
 
 class UserBase(BaseModel):
     username: str
-    email: EmailStr
+    email: str
     role: str = "operator"
     line_id: int | None = None
     is_active: bool = True
 
 
 class UserCreate(UserBase):
+    email: EmailStr  # strict validation only on creation
     password: str
 
 
 class UserUpdate(BaseModel):
     username: str | None = None
-    email: EmailStr | None = None
+    email: str | None = None
     role: str | None = None
     line_id: int | None = None
     is_active: bool | None = None

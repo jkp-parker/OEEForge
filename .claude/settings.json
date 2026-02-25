@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install --package-lock-only)",
+      "WebFetch(domain:docs.influxdata.com)"
+    ]
+  }
+}

@@ -32,11 +32,12 @@ Connect to your existing OPC-UA data pipeline, calculate OEE in real time, and g
 | Service | Image / Build | Purpose |
 |---|---|---|
 | `nginx` | `nginx:1.27-alpine` | Reverse proxy |
-| `frontend` | `./frontend` | React + Shadcn/ui portal |
+| `frontend` | `./frontend` | React + Vite portal |
 | `backend` | `./backend` | FastAPI REST API |
 | `oee-service` | `./oee-service` | Scheduled OEE calculator |
 | `postgres` | `postgres:16` | Business config & event data |
 | `influxdb` | `quay.io/influxdb/influxdb3-core` | Time-series metrics |
+| `explorer` | `influxdata/influxdb3-ui:1.6.2` | InfluxDB 3 Explorer UI |
 | `grafana` | `grafana/grafana:10.4.2` | Dashboards |
 
 ---
@@ -56,37 +57,34 @@ cd OEEForge
 cp .env.example .env
 ```
 
-Edit `.env` — at minimum change `POSTGRES_PASSWORD` and generate a `SECRET_KEY`:
+Edit `.env` — at minimum set `POSTGRES_PASSWORD`, `SECRET_KEY`, and `INFLUXDB3_ADMIN_TOKEN`:
 
 ```bash
-openssl rand -hex 32   # paste output as SECRET_KEY in .env
+# Generate SECRET_KEY
+openssl rand -hex 32
+
+# Generate INFLUXDB3_ADMIN_TOKEN (must start with apiv3_)
+echo "apiv3_$(openssl rand -hex 32)"
 ```
 
-### 3. Run database migrations
-
-```bash
-# Start only the database first
-docker compose up -d postgres
-
-# Run Alembic migrations
-docker compose run --rm backend alembic upgrade head
-```
-
-### 4. Start all services
+### 3. Start all services
 
 ```bash
 docker compose up -d
 ```
 
-### 5. Access
+The backend automatically runs `alembic upgrade head` on startup before serving requests.
+
+### 4. Access
 
 | Service | URL |
 |---|---|
 | **App (Admin / Operator portal)** | http://localhost |
 | **API docs (Swagger)** | http://localhost/docs |
+| **InfluxDB 3 Explorer** | http://localhost:8888 |
 | **Grafana** | http://localhost:3001 |
 
-**Default admin credentials:** `admin` / `admin` (set via `FIRST_ADMIN_EMAIL` and `FIRST_ADMIN_PASSWORD` in `.env`)
+**Default admin credentials:** `admin@oeeforge.local` / `admin` (set via `FIRST_ADMIN_EMAIL` and `FIRST_ADMIN_PASSWORD` in `.env`)
 
 ---
 
@@ -173,7 +171,7 @@ OEEForge/
 │   ├── calculator/             # Availability, Performance, Quality, OEE
 │   ├── scheduler/              # APScheduler jobs
 │   └── Dockerfile
-├── frontend/                   # React + Vite + Shadcn/ui
+├── frontend/                   # React + Vite
 │   └── src/
 │       ├── pages/
 │       │   ├── admin/          # Admin portal pages
@@ -242,7 +240,7 @@ python main.py
 | `POSTGRES_USER` | `oeeforge` | PostgreSQL user |
 | `POSTGRES_PASSWORD` | `oeeforge_secret` | PostgreSQL password |
 | `INFLUXDB_DATABASE` | `oeeforge` | InfluxDB 3 database name |
-| `INFLUXDB_TOKEN` | _(empty)_ | InfluxDB auth token (if required) |
+| `INFLUXDB3_ADMIN_TOKEN` | _(must set)_ | InfluxDB admin token — must start with `apiv3_` |
 | `SECRET_KEY` | _(must set)_ | JWT signing secret |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `480` | JWT token lifetime |
 | `FIRST_ADMIN_EMAIL` | `admin@oeeforge.local` | Initial admin user email |
