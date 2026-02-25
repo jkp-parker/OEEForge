@@ -1,8 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { machinesApi, oeeMetricsApi } from "@/lib/api";
 import { OEEGauge } from "@/components/OEEGauge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { pct } from "@/lib/utils";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 
 export default function AdminDashboard() {
@@ -11,15 +9,12 @@ export default function AdminDashboard() {
     queryFn: () => machinesApi.list().then((r) => r.data),
   });
 
-  const machineIds = machines.map((m) => String(m.id));
-
   const { data: oeeData = [] } = useQuery({
     queryKey: ["oee-metrics", "oee"],
     queryFn: () => oeeMetricsApi.oee({ limit: 200 }).then((r) => r.data),
     refetchInterval: 60_000,
   });
 
-  // Latest metric per machine
   const latestByMachine: Record<string, typeof oeeData[0]> = {};
   for (const row of oeeData) {
     const mid = row.machine_id ?? "";
@@ -39,37 +34,37 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">OEE Dashboard</h1>
+      <h1 className="text-2xl font-bold text-gray-900">OEE Dashboard</h1>
 
       {/* Per-machine gauges */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {machines.map((machine) => {
           const metric = latestByMachine[String(machine.id)];
           return (
-            <Card key={machine.id}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">{machine.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <div key={machine.id} className="card">
+              <div className="px-4 pt-4 pb-2">
+                <h3 className="text-sm font-semibold text-gray-900">{machine.name}</h3>
+              </div>
+              <div className="px-4 pb-4">
                 <div className="grid grid-cols-2 gap-2">
                   <OEEGauge label="OEE" value={metric?.oee} size="sm" />
                   <OEEGauge label="Avail" value={metric?.availability} size="sm" />
                   <OEEGauge label="Perf" value={metric?.performance} size="sm" />
                   <OEEGauge label="Qual" value={metric?.quality} size="sm" />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           );
         })}
       </div>
 
       {/* Bar chart comparison */}
       {chartData.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>OEE Component Comparison (Latest)</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="card">
+          <div className="px-6 pt-6 pb-4">
+            <h3 className="text-base font-semibold text-gray-900">OEE Component Comparison (Latest)</h3>
+          </div>
+          <div className="px-6 pb-6">
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -83,8 +78,8 @@ export default function AdminDashboard() {
                 <Bar dataKey="OEE" fill="#6366f1" />
               </BarChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );

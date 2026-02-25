@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { oeeTargetsApi, machinesApi, linesApi } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2 } from "lucide-react";
 import { pct } from "@/lib/utils";
 
@@ -40,24 +36,22 @@ export default function AdminOEETargets() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">OEE Targets</h1>
+      <h1 className="text-2xl font-bold text-gray-900">OEE Targets</h1>
 
-      <Card>
-        <CardHeader><CardTitle>New Target</CardTitle></CardHeader>
-        <CardContent>
+      <div className="card">
+        <div className="px-6 pt-6 pb-4"><h3 className="text-base font-semibold text-gray-900">New Target</h3></div>
+        <div className="px-6 pb-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="space-y-1 col-span-2 md:col-span-1">
-              <Label>Machine (optional)</Label>
-              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={form.machine_id} onChange={(e) => setForm({ ...form, machine_id: e.target.value, line_id: "" })}>
+            <div className="col-span-2 md:col-span-1">
+              <label className="label">Machine (optional)</label>
+              <select className="input" value={form.machine_id} onChange={(e) => setForm({ ...form, machine_id: e.target.value, line_id: "" })}>
                 <option value="">— All —</option>
                 {machines.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
               </select>
             </div>
-            <div className="space-y-1 col-span-2 md:col-span-1">
-              <Label>Line (optional)</Label>
-              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={form.line_id} onChange={(e) => setForm({ ...form, line_id: e.target.value, machine_id: "" })}>
+            <div className="col-span-2 md:col-span-1">
+              <label className="label">Line (optional)</label>
+              <select className="input" value={form.line_id} onChange={(e) => setForm({ ...form, line_id: e.target.value, machine_id: "" })}>
                 <option value="">— All —</option>
                 {lines.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
@@ -68,35 +62,36 @@ export default function AdminOEETargets() {
               { key: "quality_target", label: "Quality" },
               { key: "oee_target", label: "OEE" },
             ].map(({ key, label }) => (
-              <div key={key} className="space-y-1">
-                <Label>{label} Target (0–1)</Label>
-                <Input
+              <div key={key}>
+                <label className="label">{label} Target (0–1)</label>
+                <input
                   type="number" step="0.01" min="0" max="1"
+                  className="input"
                   value={(form as any)[key]}
                   onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                 />
               </div>
             ))}
             <div className="col-span-2 md:col-span-4">
-              <Button onClick={() => createMutation.mutate()}>
-                <Plus className="h-4 w-4 mr-2" /> Add Target
-              </Button>
+              <button className="btn-primary" onClick={() => createMutation.mutate()}>
+                <Plus className="h-4 w-4" /> Add Target
+              </button>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <table className="w-full text-sm">
-            <thead className="border-b bg-muted/50">
+      <div className="card">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="border-b border-gray-200 bg-gray-50">
               <tr>
-                <th className="text-left p-3">Scope</th>
-                <th className="text-left p-3">Availability</th>
-                <th className="text-left p-3">Performance</th>
-                <th className="text-left p-3">Quality</th>
-                <th className="text-left p-3">OEE</th>
-                <th className="p-3"></th>
+                <th className="table-th">Scope</th>
+                <th className="table-th">Availability</th>
+                <th className="table-th">Performance</th>
+                <th className="table-th">Quality</th>
+                <th className="table-th">OEE</th>
+                <th className="table-th"></th>
               </tr>
             </thead>
             <tbody>
@@ -104,24 +99,24 @@ export default function AdminOEETargets() {
                 const machine = machines.find((m) => m.id === t.machine_id);
                 const line = lines.find((l) => l.id === t.line_id);
                 return (
-                  <tr key={t.id} className="border-b hover:bg-muted/30">
-                    <td className="p-3 font-medium">{machine?.name ?? line?.name ?? "Global"}</td>
-                    <td className="p-3">{pct(t.availability_target)}</td>
-                    <td className="p-3">{pct(t.performance_target)}</td>
-                    <td className="p-3">{pct(t.quality_target)}</td>
-                    <td className="p-3">{pct(t.oee_target)}</td>
-                    <td className="p-3 text-right">
-                      <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(t.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                  <tr key={t.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="table-td font-medium">{machine?.name ?? line?.name ?? "Global"}</td>
+                    <td className="table-td">{pct(t.availability_target)}</td>
+                    <td className="table-td">{pct(t.performance_target)}</td>
+                    <td className="table-td">{pct(t.quality_target)}</td>
+                    <td className="table-td">{pct(t.oee_target)}</td>
+                    <td className="table-td text-right">
+                      <button className="btn-ghost p-1.5" onClick={() => deleteMutation.mutate(t.id)}>
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </button>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

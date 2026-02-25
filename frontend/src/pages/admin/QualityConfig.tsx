@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { qualityConfigsApi, machinesApi, productsApi } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Plus, Trash2 } from "lucide-react";
 import { pct } from "@/lib/utils";
 
@@ -46,78 +41,76 @@ export default function AdminQualityConfig() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Quality Configuration</h1>
+      <h1 className="text-2xl font-bold text-gray-900">Quality Configuration</h1>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Add Quality Config</CardTitle>
-          <CardDescription>Configure OPC-UA tags or manual entry mode for reject tracking</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="card">
+        <div className="px-6 pt-6 pb-4">
+          <h3 className="text-base font-semibold text-gray-900">Add Quality Config</h3>
+          <p className="text-sm text-gray-500 mt-1">Configure OPC-UA tags or manual entry mode for reject tracking</p>
+        </div>
+        <div className="px-6 pb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label>Machine *</Label>
-              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={form.machine_id} onChange={(e) => setForm({ ...form, machine_id: e.target.value })}>
+            <div>
+              <label className="label">Machine *</label>
+              <select className="input" value={form.machine_id} onChange={(e) => setForm({ ...form, machine_id: e.target.value })}>
                 <option value="">Select machine</option>
                 {machines.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
               </select>
             </div>
-            <div className="space-y-1">
-              <Label>Product (optional)</Label>
-              <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={form.product_id} onChange={(e) => setForm({ ...form, product_id: e.target.value })}>
+            <div>
+              <label className="label">Product (optional)</label>
+              <select className="input" value={form.product_id} onChange={(e) => setForm({ ...form, product_id: e.target.value })}>
                 <option value="">— All Products —</option>
                 {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
-            <div className="space-y-1">
-              <Label>Good Parts OPC-UA Tag</Label>
-              <Input value={form.good_parts_tag} onChange={(e) => setForm({ ...form, good_parts_tag: e.target.value })}
+            <div>
+              <label className="label">Good Parts OPC-UA Tag</label>
+              <input className="input" value={form.good_parts_tag} onChange={(e) => setForm({ ...form, good_parts_tag: e.target.value })}
                 placeholder="ns=2;s=Machine.GoodCount" disabled={form.manual_reject_entry} />
             </div>
-            <div className="space-y-1">
-              <Label>Reject Parts OPC-UA Tag</Label>
-              <Input value={form.reject_parts_tag} onChange={(e) => setForm({ ...form, reject_parts_tag: e.target.value })}
+            <div>
+              <label className="label">Reject Parts OPC-UA Tag</label>
+              <input className="input" value={form.reject_parts_tag} onChange={(e) => setForm({ ...form, reject_parts_tag: e.target.value })}
                 placeholder="ns=2;s=Machine.RejectCount" disabled={form.manual_reject_entry} />
             </div>
-            <div className="space-y-1">
-              <Label>Quality Target (0–1)</Label>
-              <Input type="number" step="0.01" min="0" max="1" value={form.quality_target}
+            <div>
+              <label className="label">Quality Target (0–1)</label>
+              <input type="number" step="0.01" min="0" max="1" className="input" value={form.quality_target}
                 onChange={(e) => setForm({ ...form, quality_target: e.target.value })} />
             </div>
-            <div className="space-y-1">
-              <Label>Cost per Reject Unit ($, optional)</Label>
-              <Input type="number" step="0.01" value={form.cost_per_unit}
+            <div>
+              <label className="label">Cost per Reject Unit ($, optional)</label>
+              <input type="number" step="0.01" className="input" value={form.cost_per_unit}
                 onChange={(e) => setForm({ ...form, cost_per_unit: e.target.value })} />
             </div>
             <div className="flex items-center gap-2 md:col-span-2">
               <input type="checkbox" id="manual" checked={form.manual_reject_entry}
                 onChange={(e) => setForm({ ...form, manual_reject_entry: e.target.checked })} />
-              <label htmlFor="manual" className="text-sm font-medium">
+              <label htmlFor="manual" className="text-sm font-medium text-gray-700">
                 Manual reject entry (operators log rejects in the portal instead of reading from OPC-UA)
               </label>
             </div>
             <div className="md:col-span-2">
-              <Button onClick={() => createMutation.mutate()} disabled={!form.machine_id}>
-                <Plus className="h-4 w-4 mr-2" /> Add Config
-              </Button>
+              <button className="btn-primary" onClick={() => createMutation.mutate()} disabled={!form.machine_id}>
+                <Plus className="h-4 w-4" /> Add Config
+              </button>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <table className="w-full text-sm">
-            <thead className="border-b bg-muted/50">
+      <div className="card">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="border-b border-gray-200 bg-gray-50">
               <tr>
-                <th className="text-left p-3">Machine</th>
-                <th className="text-left p-3">Product</th>
-                <th className="text-left p-3">Mode</th>
-                <th className="text-left p-3">Target</th>
-                <th className="text-left p-3">Cost/Unit</th>
-                <th className="p-3"></th>
+                <th className="table-th">Machine</th>
+                <th className="table-th">Product</th>
+                <th className="table-th">Mode</th>
+                <th className="table-th">Target</th>
+                <th className="table-th">Cost/Unit</th>
+                <th className="table-th"></th>
               </tr>
             </thead>
             <tbody>
@@ -125,28 +118,28 @@ export default function AdminQualityConfig() {
                 const m = machines.find((x) => x.id === c.machine_id);
                 const p = products.find((x) => x.id === c.product_id);
                 return (
-                  <tr key={c.id} className="border-b hover:bg-muted/30">
-                    <td className="p-3 font-medium">{m?.name}</td>
-                    <td className="p-3">{p?.name ?? "All"}</td>
-                    <td className="p-3">
-                      <Badge variant={c.manual_reject_entry ? "secondary" : "outline"}>
+                  <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="table-td font-medium">{m?.name}</td>
+                    <td className="table-td">{p?.name ?? "All"}</td>
+                    <td className="table-td">
+                      <span className={c.manual_reject_entry ? "badge-gray" : "badge-blue"}>
                         {c.manual_reject_entry ? "Manual" : "OPC-UA"}
-                      </Badge>
+                      </span>
                     </td>
-                    <td className="p-3">{pct(c.quality_target)}</td>
-                    <td className="p-3">{c.cost_per_unit ? `$${c.cost_per_unit}` : "—"}</td>
-                    <td className="p-3 text-right">
-                      <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(c.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                    <td className="table-td">{pct(c.quality_target)}</td>
+                    <td className="table-td">{c.cost_per_unit ? `$${c.cost_per_unit}` : "—"}</td>
+                    <td className="table-td text-right">
+                      <button className="btn-ghost p-1.5" onClick={() => deleteMutation.mutate(c.id)}>
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </button>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

@@ -3,10 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Activity } from "lucide-react";
 import { login } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -32,46 +28,48 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="card w-full max-w-sm">
+        <div className="px-6 pt-6 pb-4 text-center">
+          <div className="flex items-center justify-center gap-2 mb-3">
             <Activity className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold">OEEForge</span>
+            <span className="text-2xl font-bold text-gray-900">OEEForge</span>
           </div>
-          <CardTitle>Sign In</CardTitle>
-          <CardDescription>Manufacturing OEE Platform</CardDescription>
-        </CardHeader>
-        <CardContent>
+          <h2 className="text-base font-semibold text-gray-900">Sign In</h2>
+          <p className="text-sm text-gray-500 mt-1">Manufacturing OEE Platform</p>
+        </div>
+        <div className="px-6 pb-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="username">Username</Label>
-              <Input
+            <div>
+              <label htmlFor="username" className="label">Username</label>
+              <input
                 id="username"
+                className="input"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
                 required
               />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="password">Password</Label>
-              <Input
+            <div>
+              <label htmlFor="password" className="label">Password</label>
+              <input
                 id="password"
                 type="password"
+                className="input"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
                 required
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <button type="submit" className="btn-primary w-full justify-center" disabled={loading}>
               {loading ? "Signing in…" : "Sign in"}
-            </Button>
+            </button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

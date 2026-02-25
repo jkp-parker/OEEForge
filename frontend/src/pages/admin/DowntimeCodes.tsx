@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { downtimeCategoriesApi, downtimeCodesApi } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2 } from "lucide-react";
 
 export default function AdminDowntimeCodes() {
@@ -43,66 +39,65 @@ export default function AdminDowntimeCodes() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Downtime Reason Codes</h1>
+      <h1 className="text-2xl font-bold text-gray-900">Downtime Reason Codes</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader><CardTitle>Categories</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
+        <div className="card">
+          <div className="px-6 pt-6 pb-4"><h3 className="text-base font-semibold text-gray-900">Categories</h3></div>
+          <div className="px-6 pb-6 space-y-3">
             <div className="flex gap-2 items-center">
-              <Input placeholder="Category name" value={catForm.name} onChange={(e) => setCatForm({ ...catForm, name: e.target.value })} />
-              <label className="flex items-center gap-1 text-sm whitespace-nowrap">
+              <input className="input flex-1" placeholder="Category name" value={catForm.name} onChange={(e) => setCatForm({ ...catForm, name: e.target.value })} />
+              <label className="flex items-center gap-1 text-sm whitespace-nowrap text-gray-700">
                 <input type="checkbox" checked={catForm.counts_against_availability}
                   onChange={(e) => setCatForm({ ...catForm, counts_against_availability: e.target.checked })} />
                 Counts vs Avail
               </label>
-              <Button size="sm" onClick={() => createCat.mutate()} disabled={!catForm.name}><Plus className="h-4 w-4" /></Button>
+              <button className="btn-primary px-2" onClick={() => createCat.mutate()} disabled={!catForm.name}><Plus className="h-4 w-4" /></button>
             </div>
             <div className="space-y-1">
               {categories.map((c) => (
-                <div key={c.id} className="flex items-center justify-between py-1 px-2 rounded hover:bg-muted/50 text-sm">
+                <div key={c.id} className="flex items-center justify-between py-1 px-2 rounded hover:bg-gray-50 text-sm">
                   <span className="flex items-center gap-2">
                     {c.name}
-                    <Badge variant={c.counts_against_availability ? "destructive" : "secondary"} className="text-xs">
+                    <span className={c.counts_against_availability ? "badge-red" : "badge-gray"}>
                       {c.counts_against_availability ? "Counts" : "Excluded"}
-                    </Badge>
+                    </span>
                   </span>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteCat.mutate(c.id)}>
-                    <Trash2 className="h-3 w-3 text-destructive" />
-                  </Button>
+                  <button className="btn-ghost p-1" onClick={() => deleteCat.mutate(c.id)}>
+                    <Trash2 className="h-3 w-3 text-red-500" />
+                  </button>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader><CardTitle>Reason Codes</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
+        <div className="card">
+          <div className="px-6 pt-6 pb-4"><h3 className="text-base font-semibold text-gray-900">Reason Codes</h3></div>
+          <div className="px-6 pb-6 space-y-3">
             <div className="flex gap-2">
-              <select className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm w-36"
-                value={codeForm.category_id} onChange={(e) => setCodeForm({ ...codeForm, category_id: e.target.value })}>
+              <select className="input w-36" value={codeForm.category_id} onChange={(e) => setCodeForm({ ...codeForm, category_id: e.target.value })}>
                 <option value="">Category</option>
                 {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-              <Input placeholder="Code name" value={codeForm.name} onChange={(e) => setCodeForm({ ...codeForm, name: e.target.value })} />
-              <Button size="sm" onClick={() => createCode.mutate()} disabled={!codeForm.category_id || !codeForm.name}><Plus className="h-4 w-4" /></Button>
+              <input className="input flex-1" placeholder="Code name" value={codeForm.name} onChange={(e) => setCodeForm({ ...codeForm, name: e.target.value })} />
+              <button className="btn-primary px-2" onClick={() => createCode.mutate()} disabled={!codeForm.category_id || !codeForm.name}><Plus className="h-4 w-4" /></button>
             </div>
             <div className="space-y-1">
               {codes.map((c) => {
                 const cat = categories.find((cat) => cat.id === c.category_id);
                 return (
-                  <div key={c.id} className="flex items-center justify-between py-1 px-2 rounded hover:bg-muted/50 text-sm">
-                    <span>{c.name} <span className="text-muted-foreground text-xs">({cat?.name})</span></span>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteCode.mutate(c.id)}>
-                      <Trash2 className="h-3 w-3 text-destructive" />
-                    </Button>
+                  <div key={c.id} className="flex items-center justify-between py-1 px-2 rounded hover:bg-gray-50 text-sm">
+                    <span>{c.name} <span className="text-gray-400 text-xs">({cat?.name})</span></span>
+                    <button className="btn-ghost p-1" onClick={() => deleteCode.mutate(c.id)}>
+                      <Trash2 className="h-3 w-3 text-red-500" />
+                    </button>
                   </div>
                 );
               })}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

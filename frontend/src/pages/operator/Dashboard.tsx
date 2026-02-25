@@ -2,8 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { machinesApi, oeeMetricsApi, oeeTargetsApi, shiftInstancesApi, type OEEMetric } from "@/lib/api";
 import { OEEGauge } from "@/components/OEEGauge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { pct, oeeColor } from "@/lib/utils";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
@@ -21,7 +19,6 @@ export default function OperatorDashboard() {
     queryFn: () => oeeTargetsApi.list().then((r) => r.data),
   });
 
-  // Fetch current OEE for each machine
   const machineIds = machines.map((m) => String(m.id));
 
   const { data: oeeHistory = [] } = useQuery({
@@ -31,7 +28,6 @@ export default function OperatorDashboard() {
     refetchInterval: 60_000,
   });
 
-  // Get latest per machine
   const latestByMachine: Record<string, OEEMetric> = {};
   for (const row of oeeHistory) {
     if (row.machine_id && !latestByMachine[row.machine_id]) {
@@ -63,11 +59,11 @@ export default function OperatorDashboard() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Shift OEE Summary</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Shift OEE Summary</h1>
         {currentShift && (
-          <Badge variant={currentShift.is_confirmed ? "success" : "warning"}>
+          <span className={currentShift.is_confirmed ? "badge-green" : "badge-yellow"}>
             {currentShift.is_confirmed ? "Shift Confirmed" : "Shift Active"}
-          </Badge>
+          </span>
         )}
       </div>
 
@@ -77,11 +73,11 @@ export default function OperatorDashboard() {
           const metric = latestByMachine[String(machine.id)];
           const target = targets.find((t) => t.machine_id === machine.id);
           return (
-            <Card key={machine.id}>
-              <CardHeader>
-                <CardTitle>{machine.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <div key={machine.id} className="card">
+              <div className="px-6 pt-6 pb-4">
+                <h3 className="text-base font-semibold text-gray-900">{machine.name}</h3>
+              </div>
+              <div className="px-6 pb-6">
                 <div className="grid grid-cols-4 gap-4">
                   <OEEGauge label="OEE" value={metric?.oee} target={target?.oee_target} size="md" />
                   <OEEGauge label="Availability" value={metric?.availability} target={target?.availability_target} size="md" />
@@ -89,23 +85,25 @@ export default function OperatorDashboard() {
                   <OEEGauge label="Quality" value={metric?.quality} target={target?.quality_target} size="md" />
                 </div>
                 {metric && (
-                  <div className="mt-4 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                  <div className="mt-4 grid grid-cols-3 gap-2 text-xs text-gray-500">
                     <div>Parts: <strong>{metric.total_parts ?? "—"}</strong></div>
                     <div>Good: <strong>{metric.good_parts ?? "—"}</strong></div>
                     <div>Reject: <strong>{metric.reject_parts ?? "—"}</strong></div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           );
         })}
       </div>
 
       {/* Trend chart */}
       {chartData.length > 1 && (
-        <Card>
-          <CardHeader><CardTitle>OEE Trend (Current Shift)</CardTitle></CardHeader>
-          <CardContent>
+        <div className="card">
+          <div className="px-6 pt-6 pb-4">
+            <h3 className="text-base font-semibold text-gray-900">OEE Trend (Current Shift)</h3>
+          </div>
+          <div className="px-6 pb-6">
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -118,8 +116,8 @@ export default function OperatorDashboard() {
                 <Line type="monotone" dataKey="Quality" stroke="#f59e0b" strokeWidth={1} dot={false} />
               </LineChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );

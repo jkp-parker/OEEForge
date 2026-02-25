@@ -1,11 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { availabilityConfigsApi, machinesApi, downtimeCategoriesApi } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Plus, Pencil, Save } from "lucide-react";
+import { Save } from "lucide-react";
 
 export default function AdminAvailabilityConfig() {
   const qc = useQueryClient();
@@ -84,48 +80,50 @@ export default function AdminAvailabilityConfig() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Availability Configuration</h1>
+      <h1 className="text-2xl font-bold text-gray-900">Availability Configuration</h1>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Select Machine</CardTitle>
-          <CardDescription>Configure state mappings and planned production time per machine</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="card">
+        <div className="px-6 pt-6 pb-4">
+          <h3 className="text-base font-semibold text-gray-900">Select Machine</h3>
+          <p className="text-sm text-gray-500 mt-1">Configure state mappings and planned production time per machine</p>
+        </div>
+        <div className="px-6 pb-6">
           <select
-            className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm w-64"
+            className="input w-64"
             value={selectedMachine}
             onChange={(e) => e.target.value ? loadConfig(Number(e.target.value)) : setSelectedMachine("")}
           >
             <option value="">Select a machine…</option>
             {machines.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {selectedMachine && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
+        <div className="card">
+          <div className="px-6 pt-6 pb-4">
+            <h3 className="text-base font-semibold text-gray-900">
               {machines.find((m) => m.id === selectedMachine)?.name} — Availability Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </h3>
+          </div>
+          <div className="px-6 pb-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {stateFields.map(({ key, label }) => (
-                <div key={key} className="space-y-1">
-                  <Label>{label}</Label>
-                  <Input
+                <div key={key}>
+                  <label className="label">{label}</label>
+                  <input
+                    className="input"
                     value={form[key]}
                     onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                     placeholder={key === "state_tag" ? "ns=2;s=Machine.State" : label.toLowerCase()}
                   />
                 </div>
               ))}
-              <div className="space-y-1">
-                <Label>Planned Production Time / Shift (seconds, optional)</Label>
-                <Input
+              <div>
+                <label className="label">Planned Production Time / Shift (seconds, optional)</label>
+                <input
                   type="number"
+                  className="input"
                   value={form.planned_production_time_seconds}
                   onChange={(e) => setForm({ ...form, planned_production_time_seconds: e.target.value })}
                   placeholder="e.g. 28800 for 8 hours"
@@ -133,9 +131,9 @@ export default function AdminAvailabilityConfig() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Excluded Downtime Categories (do NOT count against availability)</Label>
-              <div className="flex gap-2 flex-wrap">
+            <div>
+              <label className="label">Excluded Downtime Categories (do NOT count against availability)</label>
+              <div className="flex gap-2 flex-wrap mt-1">
                 {categories.map((cat) => (
                   <button
                     key={cat.id}
@@ -143,8 +141,8 @@ export default function AdminAvailabilityConfig() {
                     onClick={() => toggleExcluded(cat.id)}
                     className={`px-3 py-1 rounded text-sm border transition-colors ${
                       form.excluded_category_ids.includes(cat.id)
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "border-input"
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "border-gray-300 text-gray-700 hover:bg-gray-50"
                     }`}
                   >
                     {cat.name}
@@ -153,11 +151,11 @@ export default function AdminAvailabilityConfig() {
               </div>
             </div>
 
-            <Button onClick={() => saveMutation.mutate()}>
-              <Save className="h-4 w-4 mr-2" /> {existingConfig ? "Update" : "Save"} Config
-            </Button>
-          </CardContent>
-        </Card>
+            <button className="btn-primary" onClick={() => saveMutation.mutate()}>
+              <Save className="h-4 w-4" /> {existingConfig ? "Update" : "Save"} Config
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersApi, linesApi, type User, type UserCreate } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2, Pencil } from "lucide-react";
 
 interface UserFormData {
@@ -65,45 +60,43 @@ export default function AdminUsers() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Users</h1>
-        <Button onClick={() => { setShowForm(!showForm); resetForm(); }}>
-          <Plus className="h-4 w-4 mr-2" /> Add User
-        </Button>
+        <h1 className="text-2xl font-bold text-gray-900">Users</h1>
+        <button className="btn-primary" onClick={() => { setShowForm(!showForm); resetForm(); }}>
+          <Plus className="h-4 w-4" /> Add User
+        </button>
       </div>
 
       {showForm && (
-        <Card>
-          <CardHeader><CardTitle>{editId ? "Edit User" : "New User"}</CardTitle></CardHeader>
-          <CardContent>
+        <div className="card">
+          <div className="px-6 pt-6 pb-4">
+            <h3 className="text-base font-semibold text-gray-900">{editId ? "Edit User" : "New User"}</h3>
+          </div>
+          <div className="px-6 pb-6">
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label>Username</Label>
-                <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
+              <div>
+                <label className="label">Username</label>
+                <input className="input" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
               </div>
-              <div className="space-y-1">
-                <Label>Email</Label>
-                <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+              <div>
+                <label className="label">Email</label>
+                <input type="email" className="input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
               </div>
-              <div className="space-y-1">
-                <Label>{editId ? "New Password (leave blank to keep)" : "Password"}</Label>
-                <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required={!editId} />
+              <div>
+                <label className="label">{editId ? "New Password (leave blank to keep)" : "Password"}</label>
+                <input type="password" className="input" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required={!editId} />
               </div>
-              <div className="space-y-1">
-                <Label>Role</Label>
-                <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value })}
-                >
+              <div>
+                <label className="label">Role</label>
+                <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
                   <option value="admin">Admin</option>
                   <option value="operator">Operator</option>
                 </select>
               </div>
               {form.role === "operator" && (
-                <div className="space-y-1">
-                  <Label>Assigned Line</Label>
+                <div>
+                  <label className="label">Assigned Line</label>
                   <select
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    className="input"
                     value={form.line_id ?? ""}
                     onChange={(e) => setForm({ ...form, line_id: e.target.value ? Number(e.target.value) : null })}
                   >
@@ -113,55 +106,53 @@ export default function AdminUsers() {
                 </div>
               )}
               <div className="flex gap-2 md:col-span-2">
-                <Button type="submit">{editId ? "Update" : "Create"}</Button>
-                <Button type="button" variant="outline" onClick={() => { setShowForm(false); resetForm(); }}>Cancel</Button>
+                <button type="submit" className="btn-primary">{editId ? "Update" : "Create"}</button>
+                <button type="button" className="btn-secondary" onClick={() => { setShowForm(false); resetForm(); }}>Cancel</button>
               </div>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b bg-muted/50">
-                <tr>
-                  <th className="text-left p-3">Username</th>
-                  <th className="text-left p-3">Email</th>
-                  <th className="text-left p-3">Role</th>
-                  <th className="text-left p-3">Status</th>
-                  <th className="p-3"></th>
+      <div className="card">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="border-b border-gray-200 bg-gray-50">
+              <tr>
+                <th className="table-th">Username</th>
+                <th className="table-th">Email</th>
+                <th className="table-th">Role</th>
+                <th className="table-th">Status</th>
+                <th className="table-th"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="table-td font-medium">{user.username}</td>
+                  <td className="table-td">{user.email}</td>
+                  <td className="table-td">
+                    <span className={user.role === "admin" ? "badge-blue" : "badge-gray"}>{user.role}</span>
+                  </td>
+                  <td className="table-td">
+                    <span className={user.is_active ? "badge-green" : "badge-red"}>
+                      {user.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                  <td className="table-td text-right">
+                    <button className="btn-ghost p-1.5" onClick={() => handleEdit(user)}>
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button className="btn-ghost p-1.5" onClick={() => deleteMutation.mutate(user.id)}>
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => (
-                  <tr key={user.id} className="border-b hover:bg-muted/30">
-                    <td className="p-3 font-medium">{user.username}</td>
-                    <td className="p-3">{user.email}</td>
-                    <td className="p-3">
-                      <Badge variant={user.role === "admin" ? "default" : "secondary"}>{user.role}</Badge>
-                    </td>
-                    <td className="p-3">
-                      <Badge variant={user.is_active ? "success" : "destructive"}>
-                        {user.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                    </td>
-                    <td className="p-3 text-right">
-                      <Button size="icon" variant="ghost" onClick={() => handleEdit(user)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(user.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
