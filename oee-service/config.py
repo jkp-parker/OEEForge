@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     INFLUXDB_DATABASE: str = "oeeforge"
     INFLUXDB_TOKEN: str = ""
     OEE_CALC_INTERVAL_SECONDS: int = 300
+    TAG_MONITOR_INTERVAL_SECONDS: int = 60
 
 
 settings = Settings()

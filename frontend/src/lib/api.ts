@@ -106,12 +106,33 @@ export const downtimeCategoriesApi = {
   delete: (id: number) => api.delete(`/downtime-categories/${id}`),
 };
 
+export const downtimeSecondaryCategoriesApi = {
+  list: (primaryCategoryId?: number) =>
+    api.get<DowntimeSecondaryCategory[]>("/downtime-secondary-categories", {
+      params: { primary_category_id: primaryCategoryId },
+    }),
+  create: (data: Omit<DowntimeSecondaryCategory, "id">) =>
+    api.post<DowntimeSecondaryCategory>("/downtime-secondary-categories", data),
+  update: (id: number, data: Partial<DowntimeSecondaryCategory>) =>
+    api.patch<DowntimeSecondaryCategory>(`/downtime-secondary-categories/${id}`, data),
+  delete: (id: number) => api.delete(`/downtime-secondary-categories/${id}`),
+};
+
 export const downtimeCodesApi = {
-  list: (categoryId?: number) =>
-    api.get<DowntimeCode[]>("/downtime-codes", { params: { category_id: categoryId } }),
+  list: (secondaryCategoryId?: number) =>
+    api.get<DowntimeCode[]>("/downtime-codes", { params: { secondary_category_id: secondaryCategoryId } }),
   create: (data: Omit<DowntimeCode, "id">) => api.post<DowntimeCode>("/downtime-codes", data),
   update: (id: number, data: Partial<DowntimeCode>) => api.patch<DowntimeCode>(`/downtime-codes/${id}`, data),
   delete: (id: number) => api.delete(`/downtime-codes/${id}`),
+};
+
+export const downtimeTagConfigsApi = {
+  list: (machineId?: number) =>
+    api.get<DowntimeTagConfig[]>("/downtime-tag-configs", { params: { machine_id: machineId } }),
+  create: (data: Omit<DowntimeTagConfig, "id">) => api.post<DowntimeTagConfig>("/downtime-tag-configs", data),
+  update: (id: number, data: Partial<DowntimeTagConfig>) =>
+    api.patch<DowntimeTagConfig>(`/downtime-tag-configs/${id}`, data),
+  delete: (id: number) => api.delete(`/downtime-tag-configs/${id}`),
 };
 
 export const downtimeEventsApi = {
@@ -119,6 +140,8 @@ export const downtimeEventsApi = {
     api.get<DowntimeEvent[]>("/downtime-events", { params }),
   create: (data: DowntimeEventCreate) => api.post<DowntimeEvent>("/downtime-events", data),
   update: (id: number, data: Partial<DowntimeEvent>) => api.patch<DowntimeEvent>(`/downtime-events/${id}`, data),
+  split: (id: number, split_time: string) =>
+    api.post<DowntimeEvent>(`/downtime-events/${id}/split`, { split_time }),
 };
 
 // ── OEE Config ────────────────────────────────────────────────────────────────
@@ -211,11 +234,23 @@ export interface Product { id: number; name: string; sku: string; description?: 
 export interface DowntimeCategory {
   id: number; name: string; description?: string; counts_against_availability: boolean;
 }
-export interface DowntimeCode { id: number; category_id: number; name: string; description?: string; }
+export interface DowntimeSecondaryCategory {
+  id: number; primary_category_id: number; name: string; description?: string;
+}
+export interface DowntimeCode {
+  id: number; secondary_category_id: number; name: string; description?: string;
+}
+export interface DowntimeTagConfig {
+  id: number; machine_id: number; measurement_name: string; tag_field: string;
+  tag_type: "digital" | "analog"; digital_downtime_value?: string;
+  analog_operator?: string; analog_threshold?: number;
+  downtime_category_id?: number; description?: string; is_enabled: boolean;
+}
 export interface DowntimeEvent {
   id: number; machine_id: number; shift_instance_id?: number;
   start_time: string; end_time?: string; reason_code_id?: number;
   comments?: string; operator_id?: number; created_at: string;
+  source_tag_config_id?: number; parent_event_id?: number; is_split: boolean;
 }
 export interface DowntimeEventCreate {
   machine_id: number; shift_instance_id?: number;

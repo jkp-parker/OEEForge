@@ -16,6 +16,7 @@ import AdminOEETargets from "@/pages/admin/OEETargets";
 import AdminAvailabilityConfig from "@/pages/admin/AvailabilityConfig";
 import AdminPerformanceConfig from "@/pages/admin/PerformanceConfig";
 import AdminQualityConfig from "@/pages/admin/QualityConfig";
+import AdminTagConfigs from "@/pages/admin/TagConfigs";
 
 // Operator pages
 import OperatorDashboard from "@/pages/operator/Dashboard";
@@ -53,6 +54,7 @@ export default function App() {
                   <Route path="availability-config" element={<AdminAvailabilityConfig />} />
                   <Route path="performance-config" element={<AdminPerformanceConfig />} />
                   <Route path="quality-config" element={<AdminQualityConfig />} />
+                  <Route path="tag-configs" element={<AdminTagConfigs />} />
                 </Routes>
               </Layout>
             </PrivateRoute>

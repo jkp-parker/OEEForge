@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { logout } from "@/lib/auth";
 import {
   Activity, BarChart3, Users, Factory, Clock, Package,
-  AlertTriangle, Target, LogOut, Gauge, Shield, Eye,
+  AlertTriangle, Target, LogOut, Gauge, Shield, Eye, Wifi,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,7 @@ const adminNav = [
   { label: "Shift Schedules", href: "/admin/shifts", icon: Clock },
   { label: "Products", href: "/admin/products", icon: Package },
   { label: "Downtime Codes", href: "/admin/downtime-codes", icon: AlertTriangle },
+  { label: "Tag Configs", href: "/admin/tag-configs", icon: Wifi },
   { label: "OEE Targets", href: "/admin/oee-targets", icon: Target },
   { label: "Availability", href: "/admin/availability-config", icon: Shield },
   { label: "Performance", href: "/admin/performance-config", icon: Gauge },

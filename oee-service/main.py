@@ -8,6 +8,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from config import settings
+from scheduler.tag_monitor import run_tag_monitor
 from scheduler.tasks import run_calculations
 
 logging.basicConfig(
@@ -19,7 +20,9 @@ logger = logging.getLogger(__name__)
 
 def main():
     logger.info(
-        f"OEE Calculation Service starting — interval: {settings.OEE_CALC_INTERVAL_SECONDS}s"
+        f"OEE Calculation Service starting — "
+        f"oee_interval: {settings.OEE_CALC_INTERVAL_SECONDS}s, "
+        f"tag_monitor_interval: {settings.TAG_MONITOR_INTERVAL_SECONDS}s"
     )
 
     scheduler = BackgroundScheduler()
@@ -31,13 +34,26 @@ def main():
         replace_existing=True,
         max_instances=1,
     )
+    scheduler.add_job(
+        run_tag_monitor,
+        trigger=IntervalTrigger(seconds=settings.TAG_MONITOR_INTERVAL_SECONDS),
+        id="tag_monitor",
+        name="Tag Monitor",
+        replace_existing=True,
+        max_instances=1,
+    )
     scheduler.start()
 
-    # Run once immediately on startup
+    # Run both jobs once immediately on startup
     try:
         run_calculations()
     except Exception as e:
         logger.error(f"Initial OEE run failed: {e}")
+
+    try:
+        run_tag_monitor()
+    except Exception as e:
+        logger.error(f"Initial tag monitor run failed: {e}")
 
     def shutdown(signum, frame):
         logger.info("Shutting down OEE service...")

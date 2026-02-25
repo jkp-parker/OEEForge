@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(npm install --package-lock-only)",
-      "WebFetch(domain:docs.influxdata.com)"
+      "WebFetch(domain:docs.influxdata.com)",
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); print\\(data[0][''text'']\\)\")",
+      "Bash(python3 -c \":*)"
+    ],
+    "additionalDirectories": [
+      "/home/joshua/.claude/projects/-home-joshua-OEEForge/memory"
     ]
   }
 }
