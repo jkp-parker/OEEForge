@@ -187,6 +187,14 @@ export const rejectEventsApi = {
   create: (data: RejectEventCreate) => api.post<RejectEvent>("/reject-events", data),
 };
 
+// ── System Admin ─────────────────────────────────────────────────────────────
+export const systemApi = {
+  health: () => api.get<SystemHealthResponse>("/system/health"),
+  sampleDataStatus: () => api.get<SampleDataStatus>("/system/sample-data/status"),
+  loadSampleData: () => api.post<SeedResult>("/system/sample-data/load"),
+  clearSampleData: () => api.post<SeedResult>("/system/sample-data/clear"),
+};
+
 // ── OEE Metrics ───────────────────────────────────────────────────────────────
 export const oeeMetricsApi = {
   oee: (params?: OEEQueryParams) => api.get<OEEMetric[]>("/oee-metrics/oee", { params }),
@@ -303,3 +311,12 @@ export interface OEEMetric {
 export interface OEEQueryParams {
   machine_id?: string; from_time?: string; to_time?: string; limit?: number;
 }
+
+export interface ServiceStatus {
+  name: string; description: string; port: string | null;
+  status: "ok" | "error" | "no_health_check"; url?: string;
+  version?: string;
+}
+export interface SystemHealthResponse { services: ServiceStatus[]; }
+export interface SampleDataStatus { loaded: boolean; }
+export interface SeedResult { success: boolean; output: string; }

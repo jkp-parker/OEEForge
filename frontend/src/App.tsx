@@ -17,6 +17,7 @@ import AdminAvailabilityConfig from "@/pages/admin/AvailabilityConfig";
 import AdminPerformanceConfig from "@/pages/admin/PerformanceConfig";
 import AdminQualityConfig from "@/pages/admin/QualityConfig";
 import AdminTagConfigs from "@/pages/admin/TagConfigs";
+import AdminSystem from "@/pages/admin/SystemAdmin";
 
 // Operator pages
 import OperatorDashboard from "@/pages/operator/Dashboard";
@@ -56,6 +57,7 @@ export default function App() {
                   <Route path="performance-config" element={<AdminPerformanceConfig />} />
                   <Route path="quality-config" element={<AdminQualityConfig />} />
                   <Route path="tag-configs" element={<AdminTagConfigs />} />
+                  <Route path="system" element={<AdminSystem />} />
                   {/* Operator pages accessible to admins */}
                   <Route path="operator" element={<OperatorDashboard />} />
                   <Route path="operator/downtime" element={<OperatorDowntime />} />

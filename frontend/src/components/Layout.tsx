@@ -1,9 +1,11 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { logout } from "@/lib/auth";
 import {
-  Activity, BarChart3, Users, Factory, Clock, Package,
-  AlertTriangle, Target, LogOut, Gauge, Shield, Eye, Wifi,
+  BarChart3, Users, Factory, Clock, Package,
+  AlertTriangle, Target, LogOut, Gauge, Shield, Eye, Wifi, Settings,
+  Sun, Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +44,7 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const { user, isAdmin } = useAuth();
+  const { theme, toggle: toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const nav = isAdmin ? adminNav : operatorNav;
@@ -52,18 +55,18 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
       {/* Sidebar */}
       <aside className="w-56 flex-shrink-0 bg-gray-900 flex flex-col hidden md:flex">
         <div className="flex items-center gap-2 px-4 py-4 border-b border-gray-700">
-          <Activity size={22} className="text-blue-400" />
+          <Gauge size={22} className="text-blue-400" />
           <div>
             <span className="text-white font-semibold text-sm leading-tight">OEEForge</span>
             <div className="text-xs text-gray-400">{isAdmin ? "Admin Portal" : "Operator Portal"}</div>
           </div>
         </div>
 
-        <nav className="flex-1 py-4 px-2 overflow-y-auto">
+        <nav className="flex-1 py-4 px-2 overflow-y-auto flex flex-col">
           {/* Primary nav (role-based) */}
           <div className="space-y-0.5">
             {nav.map(({ label, href, icon: Icon }) => {
@@ -115,17 +118,45 @@ export default function Layout({ children }: LayoutProps) {
               </div>
             </>
           )}
+
+          {/* System admin — push to bottom */}
+          {isAdmin && (
+            <div className="mt-auto pt-2">
+              <div className="border-t border-gray-700 my-3" />
+              <Link
+                to="/admin/system"
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                  location.pathname === "/admin/system"
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                )}
+              >
+                <Settings size={16} className="shrink-0" />
+                System
+              </Link>
+            </div>
+          )}
         </nav>
 
         <div className="px-4 py-3 border-t border-gray-700">
           <div className="text-xs text-gray-400 mb-2">{user?.email}</div>
-          <button
-            onClick={handleLogout}
-            className="btn-ghost w-full justify-start text-gray-300 hover:text-white text-xs"
-          >
-            <LogOut size={14} />
-            Sign out
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleLogout}
+              className="btn-ghost flex-1 justify-start text-gray-300 hover:text-white text-xs"
+            >
+              <LogOut size={14} />
+              Sign out
+            </button>
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
+          </div>
           <div className="mt-2 text-xs text-gray-500">OEEForge · OEE Platform</div>
         </div>
       </aside>

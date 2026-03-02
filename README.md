@@ -40,12 +40,13 @@ Database migrations run automatically on first start. The stack is ready in ~60 
 |---------|-----|
 | App (Admin / Operator portal) | http://localhost |
 | API docs (Swagger) | http://localhost/docs |
-| InfluxDB Explorer | http://localhost:8888 |
 | Grafana | http://localhost:3001 |
 
 **Default admin:** `admin@oeeforge.local` / `admin`
 
 ### 4. Load sample data (optional)
+
+Navigate to **Admin > System** in the sidebar and click **Load Sample Data**, or run from the CLI:
 
 ```bash
 docker compose exec backend python /app/scripts/seed_sample_data.py
@@ -57,15 +58,16 @@ This seeds 7 days of OEE data for a fictional plant (WidgetCo Manufacturing — 
 
 | Service | Technology | Purpose |
 |---------|-----------|---------|
-| `nginx` | nginx 1.27 | Reverse proxy |
-| `frontend` | React 18 + Vite | Admin and operator portals |
+| `frontend` | React 18 + Vite + nginx | Admin and operator portals + reverse proxy |
 | `backend` | FastAPI + SQLAlchemy | REST API + business logic |
 | `oee-service` | Python + APScheduler | OEE calculation and tag monitoring |
 | `postgres` | PostgreSQL 16 | Configuration, events, shift data |
 | `influxdb` | InfluxDB 3 Core | Time-series OEE metrics and tag data |
-| `grafana` | Grafana Main-Ubuntu | Optional dashboarding |
+| `grafana` | Grafana OSS 12.4 | Optional dashboarding (SQL mode via FlightSQL) |
 
 OEE is computed as **Availability × Performance × Quality** on a configurable interval (default 5 min) and written back to InfluxDB for the frontend to query.
+
+Service health and build versions (PostgreSQL, InfluxDB, Grafana) can be monitored from the **System Administration** page (`/admin/system`), which also provides UI controls for loading and clearing sample data.
 
 ## Documentation
 

@@ -1,30 +1,25 @@
 apiVersion: 1
 
 datasources:
-  # ── InfluxDB 3 Core ──────────────────────────────────────────────────────────
+  # ── InfluxDB 3 Core (SQL via FlightSQL / gRPC) ──────────────────────────────
   - name: InfluxDB3
     type: influxdb
     access: proxy
     url: ${INFLUXDB_URL}
-    jsonData:
-      version: Flux
-      organization: oeeforge
-      defaultBucket: ${INFLUXDB_DATABASE}
-    secureJsonData:
-      token: ${INFLUXDB_TOKEN}
+    database: ${INFLUXDB_DATABASE}
     editable: true
     uid: influxdb3
-
-  # ── InfluxDB 3 HTTP (SQL via custom JSON API) ─────────────────────────────
-  - name: InfluxDB3-SQL
-    type: yesoreyeram-infinity-datasource
-    access: proxy
-    editable: true
-    uid: influxdb3sql
     jsonData:
-      base_url: ${INFLUXDB_URL}
+      dbName: ${INFLUXDB_DATABASE}
+      httpMode: POST
+      version: SQL
+      insecureGrpc: true
+      httpHeaderName1: Authorization
+    secureJsonData:
+      httpHeaderValue1: Bearer ${INFLUXDB_TOKEN}
+      token: ${INFLUXDB_TOKEN}
 
-  # ── PostgreSQL ────────────────────────────────────────────────────────────────
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
   - name: PostgreSQL
     type: postgres
     access: proxy

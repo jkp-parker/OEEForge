@@ -10,7 +10,7 @@
   "links": [],
   "panels": [
     {
-      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "datasource": { "type": "influxdb", "uid": "influxdb3" },
       "fieldConfig": {
         "defaults": {
           "mappings": [],
@@ -35,15 +35,16 @@
       "type": "gauge",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "postgresql" },
-          "rawSql": "SELECT NOW() as time, 0 as oee",
-          "format": "time_series",
+          "datasource": { "type": "influxdb", "uid": "influxdb3" },
+          "queryType": "sql",
+          "rawSql": "SELECT time, oee * 100 AS oee FROM oee_metrics WHERE time >= $__timeFrom AND time <= $__timeTo ORDER BY time DESC LIMIT 1",
+          "format": "table",
           "refId": "A"
         }
       ]
     },
     {
-      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "datasource": { "type": "influxdb", "uid": "influxdb3" },
       "fieldConfig": {
         "defaults": {
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 70 }, { "color": "green", "value": 90 }] },
@@ -55,10 +56,18 @@
       "options": { "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
       "title": "Availability",
       "type": "gauge",
-      "targets": [{ "datasource": { "type": "postgres", "uid": "postgresql" }, "rawSql": "SELECT NOW() as time, 0 as availability", "format": "time_series", "refId": "A" }]
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb3" },
+          "queryType": "sql",
+          "rawSql": "SELECT time, availability * 100 AS availability FROM oee_metrics WHERE time >= $__timeFrom AND time <= $__timeTo ORDER BY time DESC LIMIT 1",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
     },
     {
-      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "datasource": { "type": "influxdb", "uid": "influxdb3" },
       "fieldConfig": {
         "defaults": {
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 70 }, { "color": "green", "value": 95 }] },
@@ -70,10 +79,18 @@
       "options": { "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
       "title": "Performance",
       "type": "gauge",
-      "targets": [{ "datasource": { "type": "postgres", "uid": "postgresql" }, "rawSql": "SELECT NOW() as time, 0 as performance", "format": "time_series", "refId": "A" }]
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb3" },
+          "queryType": "sql",
+          "rawSql": "SELECT time, performance * 100 AS performance FROM oee_metrics WHERE time >= $__timeFrom AND time <= $__timeTo ORDER BY time DESC LIMIT 1",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
     },
     {
-      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "datasource": { "type": "influxdb", "uid": "influxdb3" },
       "fieldConfig": {
         "defaults": {
           "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 95 }, { "color": "green", "value": 99 }] },
@@ -85,31 +102,45 @@
       "options": { "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdLabels": false, "showThresholdMarkers": true },
       "title": "Quality",
       "type": "gauge",
-      "targets": [{ "datasource": { "type": "postgres", "uid": "postgresql" }, "rawSql": "SELECT NOW() as time, 0 as quality", "format": "time_series", "refId": "A" }]
-    },
-    {
-      "datasource": { "type": "postgres", "uid": "postgresql" },
-      "fieldConfig": {
-        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "spanNulls": false }, "unit": "percent" },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 6 },
-      "id": 5,
-      "options": { "legend": { "calcs": ["lastNotNull", "max", "min"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "none" } },
-      "title": "OEE Components Over Time — All Machines",
-      "type": "timeseries",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "postgresql" },
-          "rawSql": "SELECT NOW() as time, 0 as oee, 0 as availability, 0 as performance, 0 as quality",
-          "format": "time_series",
+          "datasource": { "type": "influxdb", "uid": "influxdb3" },
+          "queryType": "sql",
+          "rawSql": "SELECT time, quality * 100 AS quality FROM oee_metrics WHERE time >= $__timeFrom AND time <= $__timeTo ORDER BY time DESC LIMIT 1",
+          "format": "table",
           "refId": "A"
         }
       ]
     },
     {
-      "datasource": { "type": "postgres", "uid": "postgresql" },
-      "fieldConfig": { "defaults": { "custom": { "displayMode": "auto" } }, "overrides": [] },
+      "datasource": { "type": "influxdb", "uid": "influxdb3" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "spanNulls": false }, "unit": "percent" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "oee" }, "properties": [{ "id": "color", "value": { "fixedColor": "#73BF69", "mode": "fixed" } }, { "id": "custom.lineWidth", "value": 3 }] },
+          { "matcher": { "id": "byName", "options": "availability" }, "properties": [{ "id": "color", "value": { "fixedColor": "#5794F2", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "performance" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "quality" }, "properties": [{ "id": "color", "value": { "fixedColor": "#B877D9", "mode": "fixed" } }] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 6 },
+      "id": 5,
+      "options": { "legend": { "calcs": ["lastNotNull", "max", "min"], "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "none" } },
+      "title": "OEE Components Over Time",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb3" },
+          "queryType": "sql",
+          "rawSql": "SELECT time, AVG(oee) * 100 AS oee, AVG(availability) * 100 AS availability, AVG(performance) * 100 AS performance, AVG(quality) * 100 AS quality FROM oee_metrics WHERE time >= $__timeFrom AND time <= $__timeTo GROUP BY time ORDER BY time",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb3" },
+      "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
       "id": 6,
       "options": { "footer": { "show": false }, "showHeader": true },
@@ -117,8 +148,9 @@
       "type": "table",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "postgresql" },
-          "rawSql": "SELECT m.name AS machine, m.id AS machine_id FROM machines m JOIN lines l ON m.line_id = l.id ORDER BY m.name",
+          "datasource": { "type": "influxdb", "uid": "influxdb3" },
+          "queryType": "sql",
+          "rawSql": "SELECT machine_id, AVG(oee) * 100 AS oee, AVG(availability) * 100 AS availability, AVG(performance) * 100 AS performance, AVG(quality) * 100 AS quality FROM oee_metrics WHERE time >= $__timeFrom AND time <= $__timeTo GROUP BY machine_id ORDER BY oee DESC",
           "format": "table",
           "refId": "A"
         }
@@ -142,10 +174,14 @@
       ]
     },
     {
-      "datasource": { "type": "postgres", "uid": "postgresql" },
+      "datasource": { "type": "influxdb", "uid": "influxdb3" },
       "fieldConfig": {
-        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2 }, "unit": "percent" },
-        "overrides": []
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "s" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "running" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "stopped" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "faulted" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] }
+        ]
       },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 },
       "id": 8,
@@ -154,12 +190,15 @@
       "options": {
         "barWidth": 0.7,
         "groupWidth": 0.7,
+        "orientation": "horizontal",
+        "stacking": "normal",
         "legend": { "displayMode": "list", "placement": "bottom" }
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "postgresql" },
-          "rawSql": "SELECT m.name AS machine, COUNT(*) AS downtime_events FROM downtime_events de JOIN machines m ON de.machine_id = m.id WHERE de.start_time > NOW() - INTERVAL '24 hours' GROUP BY m.name ORDER BY downtime_events DESC",
+          "datasource": { "type": "influxdb", "uid": "influxdb3" },
+          "queryType": "sql",
+          "rawSql": "SELECT machine_id, SUM(state_running_seconds) AS running, SUM(state_stopped_seconds) AS stopped, SUM(state_faulted_seconds) AS faulted FROM availability_metrics WHERE time >= $__timeFrom AND time <= $__timeTo GROUP BY machine_id ORDER BY machine_id",
           "format": "table",
           "refId": "A"
         }
@@ -237,7 +276,7 @@
       }
     ]
   },
-  "time": { "from": "now-8h", "to": "now" },
+  "time": { "from": "now-7d", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
   "title": "OEEForge — OEE Overview",

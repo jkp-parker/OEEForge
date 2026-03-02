@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api import auth, downtime, oee_config, oee_metrics, organization, products, shifts, users
+from app.api import auth, downtime, oee_config, oee_metrics, organization, products, shifts, system_admin, users
 
 api_router = APIRouter(prefix="/api")
 
@@ -12,3 +12,4 @@ api_router.include_router(products.router)
 api_router.include_router(downtime.router)
 api_router.include_router(oee_config.router)
 api_router.include_router(oee_metrics.router)
+api_router.include_router(system_admin.router)

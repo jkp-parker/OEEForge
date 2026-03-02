@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Activity } from "lucide-react";
+import { Gauge } from "lucide-react";
 import { login } from "@/lib/auth";
 
 export default function Login() {
@@ -32,7 +32,7 @@ export default function Login() {
       <div className="card w-full max-w-sm">
         <div className="px-6 pt-6 pb-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
-            <Activity className="h-8 w-8 text-blue-600" />
+            <Gauge className="h-8 w-8 text-blue-600" />
             <span className="text-2xl font-bold text-gray-900">OEEForge</span>
           </div>
           <h2 className="text-base font-semibold text-gray-900">Sign In</h2>

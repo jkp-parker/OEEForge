@@ -58,8 +58,9 @@ INFLUX_BASE = os.getenv("INFLUXDB_URL", "http://influxdb:8181")
 INFLUX_DB   = os.getenv("INFLUXDB_DATABASE", "oeeforge")
 INFLUX_TOK  = os.getenv("INFLUXDB_TOKEN", os.getenv("INFLUXDB3_ADMIN_TOKEN", ""))
 
-CLEAR = "--clear" in sys.argv
-RNG   = random.Random(42)   # Fixed seed → reproducible data
+CLEAR      = "--clear" in sys.argv or "--clear-only" in sys.argv
+CLEAR_ONLY = "--clear-only" in sys.argv
+RNG        = random.Random(42)   # Fixed seed → reproducible data
 
 # ── Static definitions ─────────────────────────────────────────────────────────
 
@@ -370,24 +371,26 @@ def influx_write(lp_lines: list[str]) -> None:
     print(f"  → InfluxDB: wrote ~{total} time-series points across 4 measurements")
 
 
-def influx_delete_range(start: datetime, end: datetime) -> None:
-    """Attempt to delete all OEE measurements in the given time range."""
-    start_s = start.strftime("%Y-%m-%dT%H:%M:%SZ")
-    end_s   = end.strftime("%Y-%m-%dT%H:%M:%SZ")
-    for meas in ("oee_metrics", "availability_metrics", "performance_metrics", "quality_metrics"):
-        sql = f"DELETE FROM {meas} WHERE time >= '{start_s}' AND time <= '{end_s}'"
-        payload = json.dumps({"db": INFLUX_DB, "q": sql}).encode("utf-8")
-        url = f"{INFLUX_BASE}/api/v3/query_sql"
-        headers = {
-            "Authorization": f"Bearer {INFLUX_TOK}",
-            "Content-Type": "application/json",
-        }
-        req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
+def influx_delete_tables() -> None:
+    """Delete all OEE measurement tables from InfluxDB (hard delete)."""
+    tables = ("oee_metrics", "availability_metrics", "performance_metrics", "quality_metrics")
+    for table in tables:
+        url = (
+            f"{INFLUX_BASE}/api/v3/configure/table"
+            f"?db={INFLUX_DB}&table={table}&hard_delete=now"
+        )
+        headers = {"Authorization": f"Bearer {INFLUX_TOK}"}
+        req = urllib.request.Request(url, headers=headers, method="DELETE")
         try:
             with urllib.request.urlopen(req, timeout=15):
-                pass
-        except Exception:
-            pass   # DELETE via SQL may not be supported in all InfluxDB 3 builds — skip silently
+                print(f"    Deleted table: {table}")
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                print(f"    Table not found (already deleted): {table}")
+            else:
+                print(f"    Failed to delete {table}: HTTP {e.code}")
+        except Exception as e:
+            print(f"    Failed to delete {table}: {e}")
 
 
 # ── Database operations ────────────────────────────────────────────────────────
@@ -632,46 +635,44 @@ async def seed(conn: asyncpg.Connection) -> None:  # noqa: C901
 
 
 async def clear_sample_data(conn: asyncpg.Connection) -> None:
-    """Delete all WidgetCo sample data from PostgreSQL (cascades to all related rows)."""
+    """Delete all WidgetCo sample data from PostgreSQL and InfluxDB."""
+    # ── PostgreSQL ──
     site_id = await conn.fetchval("SELECT id FROM sites WHERE name = $1", SITE_NAME)
-    if site_id is None:
-        print("  No WidgetCo data found — nothing to clear.")
-        return
+    if site_id is not None:
+        # Cascading FK deletes: sites → areas → lines → machines → shift_instances
+        # → downtime_events, shift_schedules, products (separate)
+        await conn.execute("DELETE FROM sites WHERE id = $1", site_id)
+        # Also clear orphaned downtime taxonomy and products (no FK to site)
+        for pname, sku, _ in PRODUCTS_DEF:
+            await conn.execute("DELETE FROM products WHERE sku = $1", sku)
+        for cat_name, _, _ in TAXONOMY:
+            await conn.execute("DELETE FROM downtime_categories WHERE name = $1", cat_name)
+        for sched_name in ("Day Shift", "Night Shift"):
+            await conn.execute("DELETE FROM shift_schedules WHERE name = $1", sched_name)
 
-    # Cascading FK deletes: sites → areas → lines → machines → shift_instances
-    # → downtime_events, shift_schedules, products (separate)
-    await conn.execute("DELETE FROM sites WHERE id = $1", site_id)
-    # Also clear orphaned downtime taxonomy and products (no FK to site)
-    for pname, sku, _ in PRODUCTS_DEF:
-        await conn.execute("DELETE FROM products WHERE sku = $1", sku)
-    for cat_name, _, _ in TAXONOMY:
-        await conn.execute("DELETE FROM downtime_categories WHERE name = $1", cat_name)
-    for sched_name in ("Day Shift", "Night Shift"):
-        await conn.execute("DELETE FROM shift_schedules WHERE name = $1", sched_name)
+        # Reset sequences so re-seeded IDs start from 1
+        for tbl in (
+            "sites", "areas", "lines", "machines",
+            "shift_schedules", "shift_instances",
+            "products", "machine_product_configs",
+            "downtime_categories", "downtime_secondary_categories", "downtime_codes",
+            "downtime_events",
+        ):
+            await conn.execute(f"""
+                SELECT setval(
+                    pg_get_serial_sequence('{tbl}', 'id'),
+                    COALESCE((SELECT MAX(id) FROM {tbl}), 0) + 1,
+                    false
+                )
+            """)
+        print("  ✓ PostgreSQL: WidgetCo data deleted.")
+    else:
+        print("  PostgreSQL: no WidgetCo data found.")
 
-    # Reset sequences so re-seeded IDs start from 1
-    for tbl in (
-        "sites", "areas", "lines", "machines",
-        "shift_schedules", "shift_instances",
-        "products", "machine_product_configs",
-        "downtime_categories", "downtime_secondary_categories", "downtime_codes",
-        "downtime_events",
-    ):
-        await conn.execute(f"""
-            SELECT setval(
-                pg_get_serial_sequence('{tbl}', 'id'),
-                COALESCE((SELECT MAX(id) FROM {tbl}), 0) + 1,
-                false
-            )
-        """)
-
-    print("  ✓ PostgreSQL: WidgetCo data deleted.")
-
-    # Best-effort InfluxDB cleanup for the 14-day window
-    now   = datetime.now(timezone.utc)
-    start = now - timedelta(days=14)
-    influx_delete_range(start, now)
-    print("  ✓ InfluxDB: delete request sent (best-effort).")
+    # ── InfluxDB ──
+    print("  Clearing InfluxDB tables …")
+    influx_delete_tables()
+    print("  ✓ InfluxDB: tables deleted.")
 
 
 async def main() -> None:
@@ -686,6 +687,9 @@ async def main() -> None:
         if CLEAR:
             print("\nClearing existing WidgetCo sample data …")
             await clear_sample_data(conn)
+            if CLEAR_ONLY:
+                print("\n  Done — data cleared (no re-seed).")
+                return
             print("Re-seeding …")
 
         site_exists = await conn.fetchval(

@@ -22,49 +22,6 @@ services:
     networks:
       - oeeforge_net
 
-  # ── InfluxDB 3 Explorer (init) ───────────────────────────────────────────────
-  explorer-init:
-    image: alpine:3.19
-    container_name: oeeforge_explorer_init
-    restart: "no"
-    volumes:
-      - explorer_config:/config
-    environment:
-      INFLUXDB3_ADMIN_TOKEN: ${INFLUXDB3_ADMIN_TOKEN}
-      INFLUXDB_DATABASE: ${INFLUXDB_DATABASE:-oeeforge}
-    command:
-      - sh
-      - -c
-      - |
-        printf '{
-          "DEFAULT_INFLUX_SERVER": "http://influxdb:8181",
-          "DEFAULT_INFLUX_DATABASE": "%s",
-          "DEFAULT_API_TOKEN": "%s",
-          "DEFAULT_SERVER_NAME": "OEEForge"
-        }' "$$INFLUXDB_DATABASE" "$$INFLUXDB3_ADMIN_TOKEN" > /config/config.json
-        echo "Explorer config written."
-    networks:
-      - oeeforge_net
-
-  # ── InfluxDB 3 Explorer ──────────────────────────────────────────────────────
-  explorer:
-    image: influxdata/influxdb3-ui:1.6.2
-    container_name: oeeforge_influxdb_explorer
-    restart: unless-stopped
-    ports:
-      - "${EXPLORER_PORT:-8888}:80"
-    volumes:
-      - explorer_config:/app-root/config:ro
-    environment:
-      SESSION_SECRET_KEY: ${SECRET_KEY:-changeme_in_production_32chars!!}
-    depends_on:
-      explorer-init:
-        condition: service_completed_successfully
-      influxdb:
-        condition: service_healthy
-    networks:
-      - oeeforge_net
-
   # ── PostgreSQL ───────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
@@ -137,19 +94,23 @@ services:
     networks:
       - oeeforge_net
 
-  # ── React Frontend ───────────────────────────────────────────────────────────
+  # ── React Frontend + Nginx Reverse Proxy ────────────────────────────────────
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: oeeforge_frontend
     restart: unless-stopped
+    ports:
+      - "${APP_PORT:-80}:80"
+    depends_on:
+      - backend
     networks:
       - oeeforge_net
 
   # ── Grafana ──────────────────────────────────────────────────────────────────
   grafana:
-    image: grafana/grafana:main-ubuntu
+    image: grafana/grafana-oss:12.4.0
     container_name: oeeforge_grafana
     restart: unless-stopped
     ports:
@@ -163,7 +124,6 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
       GF_INSTALL_PLUGINS: ""
       GF_AUTH_ANONYMOUS_ENABLED: "false"
-      # PostgreSQL for Grafana datasource
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-oeeforge}
@@ -180,21 +140,6 @@ services:
     networks:
       - oeeforge_net
 
-  # ── Nginx Reverse Proxy ──────────────────────────────────────────────────────
-  nginx:
-    image: nginx:1.27-alpine
-    container_name: oeeforge_nginx
-    restart: unless-stopped
-    ports:
-      - "${APP_PORT:-80}:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - backend
-      - frontend
-    networks:
-      - oeeforge_net
-
 networks:
   oeeforge_net:
     driver: bridge
@@ -203,4 +148,3 @@ volumes:
   influxdb_data:
   postgres_data:
   grafana_data:
-  explorer_config:

@@ -29,6 +29,29 @@ const DEFAULT_PRESET = "Last 7 Days";
 const avg = (arr: number[]) =>
   arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
 
+function aggregateByMachine(data: OEEMetric[]) {
+  const groups: Record<string, OEEMetric[]> = {};
+  for (const row of data) {
+    const mid = String(row.machine_id ?? "");
+    if (!mid) continue;
+    if (!groups[mid]) groups[mid] = [];
+    groups[mid].push(row);
+  }
+  const numAvg = (vals: (number | null | undefined)[]) => {
+    const clean = vals.filter((v): v is number => v != null);
+    return clean.length ? clean.reduce((a, b) => a + b, 0) / clean.length : undefined;
+  };
+  return Object.values(groups).map((rows) => ({
+    ...rows[0],
+    oee:          numAvg(rows.map((r) => r.oee)),
+    availability: numAvg(rows.map((r) => r.availability)),
+    performance:  numAvg(rows.map((r) => r.performance)),
+    quality:      numAvg(rows.map((r) => r.quality)),
+    total_parts:  rows.reduce((s, r) => s + (r.total_parts ?? 0), 0),
+    good_parts:   rows.reduce((s, r) => s + (r.good_parts  ?? 0), 0),
+  } as OEEMetric));
+}
+
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 
 function KpiCard({
@@ -46,7 +69,7 @@ function KpiCard({
     value == null ? "—" : isPercent ? `${value.toFixed(1)}%` : value.toLocaleString();
   const color =
     value == null || !isPercent
-      ? "text-gray-800"
+      ? "text-gray-800 dark:text-gray-200"
       : value >= 85
       ? "text-emerald-600"
       : value >= 60
@@ -55,7 +78,7 @@ function KpiCard({
 
   return (
     <div className="card px-5 py-4">
-      <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
         {label}
       </div>
       <div className={`text-3xl font-bold leading-none ${color}`}>{text}</div>
@@ -94,6 +117,12 @@ export default function AdminDashboard() {
     queryFn: () => machinesApi.list().then((r) => r.data),
   });
 
+  const allMachineParams = {
+    from_time: new Date(fromDate).toISOString(),
+    to_time:   new Date(toDate).toISOString(),
+    limit: 5000,
+  };
+
   const {
     data: oeeData = [],
     isFetching,
@@ -102,6 +131,13 @@ export default function AdminDashboard() {
   } = useQuery({
     queryKey: ["oee-metrics", "oee", fromDate, toDate, selectedMachine],
     queryFn: () => oeeMetricsApi.oee(queryParams).then((r) => r.data),
+    refetchInterval: 60_000,
+  });
+
+  // Unfiltered OEE data so the Machine Summary table always shows all machines
+  const { data: allOeeData = [] } = useQuery({
+    queryKey: ["oee-metrics", "oee", fromDate, toDate, "all"],
+    queryFn: () => oeeMetricsApi.oee(allMachineParams).then((r) => r.data),
     refetchInterval: 60_000,
   });
 
@@ -127,28 +163,10 @@ export default function AdminDashboard() {
   // Average all snapshots in the selected period per machine so KPIs reflect
   // the full period, not just the latest snapshot.
 
-  const latestByMachine = useMemo(() => {
-    const groups: Record<string, OEEMetric[]> = {};
-    for (const row of oeeData) {
-      const mid = String(row.machine_id ?? "");
-      if (!mid) continue;
-      if (!groups[mid]) groups[mid] = [];
-      groups[mid].push(row);
-    }
-    const numAvg = (vals: (number | null | undefined)[]) => {
-      const clean = vals.filter((v): v is number => v != null);
-      return clean.length ? clean.reduce((a, b) => a + b, 0) / clean.length : undefined;
-    };
-    return Object.values(groups).map((rows) => ({
-      ...rows[0],
-      oee:          numAvg(rows.map((r) => r.oee)),
-      availability: numAvg(rows.map((r) => r.availability)),
-      performance:  numAvg(rows.map((r) => r.performance)),
-      quality:      numAvg(rows.map((r) => r.quality)),
-      total_parts:  rows.reduce((s, r) => s + (r.total_parts ?? 0), 0),
-      good_parts:   rows.reduce((s, r) => s + (r.good_parts  ?? 0), 0),
-    } as OEEMetric));
-  }, [oeeData]);
+  const latestByMachine = useMemo(() => aggregateByMachine(oeeData), [oeeData]);
+
+  // Always show all machines in the summary table regardless of filter
+  const allMachinesSummary = useMemo(() => aggregateByMachine(allOeeData), [allOeeData]);
 
   const kpi = useMemo(() => {
     if (!latestByMachine.length) return null;
@@ -178,7 +196,7 @@ export default function AdminDashboard() {
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Plant OEE Overview</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Plant OEE Overview</h1>
           {lastUpdated && (
             <p className="text-xs text-gray-400 mt-0.5">
               Updated {lastUpdated} · auto-refreshes every 60s
@@ -200,15 +218,15 @@ export default function AdminDashboard() {
       <div className="card px-4 py-3 flex items-center gap-4 flex-wrap">
 
         {/* Preset quick-select */}
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 flex-shrink-0">
+        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1 flex-shrink-0">
           {PRESETS.map(({ label, hours }) => (
             <button
               key={label}
               onClick={() => applyPreset(hours, label)}
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                 activePreset === label
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               }`}
             >
               {label}
@@ -216,11 +234,11 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        <div className="w-px h-6 bg-gray-200 flex-shrink-0" />
+        <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
 
         {/* From */}
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">
             From
           </span>
           <input
@@ -228,13 +246,13 @@ export default function AdminDashboard() {
             value={fromDate}
             onChange={(e) => { setFromDate(e.target.value); setActivePreset(""); }}
             style={{ width: "13rem" }}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
 
         {/* To */}
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">
             To
           </span>
           <input
@@ -242,18 +260,18 @@ export default function AdminDashboard() {
             value={toDate}
             onChange={(e) => { setToDate(e.target.value); setActivePreset(""); }}
             style={{ width: "13rem" }}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
 
         {/* Machine */}
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-nowrap">
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">
             Machine
           </span>
           <select
             style={{ width: "11rem" }}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             value={selectedMachine}
             onChange={(e) => setSelectedMachine(e.target.value)}
           >
@@ -293,7 +311,7 @@ export default function AdminDashboard() {
         {/* OEE Donut — 1 column */}
         <div className="card col-span-1">
           <div className="px-5 pt-5 pb-2">
-            <h3 className="text-base font-semibold text-gray-900">OEE Breakdown</h3>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">OEE Breakdown</h3>
             <p className="text-xs text-gray-400 mt-0.5">Plant average</p>
           </div>
           <div className="px-4 pb-5 flex items-center justify-center min-h-[260px]">
@@ -315,17 +333,27 @@ export default function AdminDashboard() {
 
         {/* Machine Summary — 3 columns */}
         <div className="card col-span-3">
-          <div className="px-6 pt-5 pb-3">
-            <h3 className="text-base font-semibold text-gray-900">Machine Summary</h3>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Latest OEE snapshot per machine in selected period
-            </p>
+          <div className="px-6 pt-5 pb-3 flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Machine Summary</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Click a row to filter the dashboard · click again to clear
+              </p>
+            </div>
+            {selectedMachine && (
+              <button
+                onClick={() => setSelectedMachine("")}
+                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Clear filter
+              </button>
+            )}
           </div>
-          {latestByMachine.length > 0 ? (
+          {allMachinesSummary.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100">
+                  <tr className="border-b border-gray-100 dark:border-gray-700">
                     <th className="table-th text-left pl-6 py-2">Machine</th>
                     <th className="table-th text-right py-2">OEE</th>
                     <th className="table-th text-right py-2">Availability</th>
@@ -333,10 +361,11 @@ export default function AdminDashboard() {
                     <th className="table-th text-right py-2 pr-6">Quality</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {latestByMachine.map((row) => {
+                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                  {allMachinesSummary.map((row) => {
+                    const mid = String(row.machine_id);
                     const machine = machines.find(
-                      (m) => String(m.id) === String(row.machine_id)
+                      (m) => String(m.id) === mid
                     );
                     const pct = (v?: number) =>
                       v != null ? `${(v * 100).toFixed(1)}%` : "—";
@@ -347,21 +376,30 @@ export default function AdminDashboard() {
                         : oeeVal >= 60
                         ? "text-amber-500"
                         : "text-red-500";
+                    const isSelected = selectedMachine === mid;
                     return (
-                      <tr key={String(row.machine_id)} className="hover:bg-gray-50">
-                        <td className="table-td pl-6 py-2 font-medium text-gray-900">
+                      <tr
+                        key={mid}
+                        onClick={() => setSelectedMachine(isSelected ? "" : mid)}
+                        className={`cursor-pointer transition-colors ${
+                          isSelected
+                            ? "bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                            : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                        }`}
+                      >
+                        <td className="table-td pl-6 py-2 font-medium text-gray-900 dark:text-gray-100">
                           {machine?.name ?? `Machine ${row.machine_id}`}
                         </td>
                         <td className={`table-td text-right py-2 font-semibold ${oeeColor}`}>
                           {pct(row.oee)}
                         </td>
-                        <td className="table-td text-right py-2 text-gray-600">
+                        <td className="table-td text-right py-2 text-gray-600 dark:text-gray-400">
                           {pct(row.availability)}
                         </td>
-                        <td className="table-td text-right py-2 text-gray-600">
+                        <td className="table-td text-right py-2 text-gray-600 dark:text-gray-400">
                           {pct(row.performance)}
                         </td>
-                        <td className="table-td text-right py-2 pr-6 text-gray-600">
+                        <td className="table-td text-right py-2 pr-6 text-gray-600 dark:text-gray-400">
                           {pct(row.quality)}
                         </td>
                       </tr>
@@ -375,13 +413,14 @@ export default function AdminDashboard() {
               No machine data available for the selected period.
             </div>
           )}
+
         </div>
       </div>
 
       {/* ── Downtime by Code (stacked bar) ── */}
       <div className="card">
         <div className="px-6 pt-5 pb-3">
-          <h3 className="text-base font-semibold text-gray-900">Downtime by Code</h3>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Downtime by Code</h3>
           <p className="text-xs text-gray-400 mt-0.5">
             Cumulative elapsed time per downtime code · selected period · stacked by top 5 machines
           </p>
