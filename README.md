@@ -29,7 +29,7 @@ INFLUXDB3_ADMIN_TOKEN=apiv3_$(openssl rand -hex 32)
 ### 2. Start the stack
 
 ```bash
-docker compose up -d -- build
+docker compose up -d --build
 ```
 
 Database migrations run automatically on first start. The stack is ready in ~60 seconds.
